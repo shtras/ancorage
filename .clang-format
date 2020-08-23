@@ -1,0 +1,32 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+DerivePointerAlignment: false
+PointerAlignment: Left
+ColumnLimit: 100
+AccessModifierOffset: -4
+IndentCaseLabels: true
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterClass: true
+    AfterControlStatement: false
+    AfterFunction: true
+    AfterNamespace: true
+    AfterStruct: true
+    BeforeElse: false
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
+    SplitEmptyNamespace: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+UseTab: Never
+AlignAfterOpenBracket: DontAlign
+ReflowComments: false
+SortIncludes: false
+ConstructorInitializerIndentWidth: 4
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+BreakConstructorInitializers: BeforeComma
+AlwaysBreakTemplateDeclarations: true
