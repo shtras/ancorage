@@ -1,65 +1,34 @@
-﻿#include <windows.h>
+﻿#include "GUI/MainWindow.h"
+#include "XInput/XInputTest.h"
 
-const wchar_t g_szClassName[] = L"myWindowClass";
+#include "spdlog_wrap.h"
 
-// Step 4: the Window Procedure
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg) {
-        case WM_CLOSE:
-            DestroyWindow(hwnd);
-            break;
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            break;
-        default:
-            return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-    return 0;
-}
+#include <Windows.h>
+#include <string>
 
 int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int cmdShow)
 {
-    WNDCLASSEX wc;
-    HWND hwnd;
-    MSG Msg;
+#ifdef RELEASE
+    auto sink =
+        std::make_shared<spdlog::sinks::daily_file_sink_mt>("Logs/log.txt", 0, 0, false, 10);
+#else
+    auto sink =
+        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 5 * 1024 * 1024, 3);
+#endif
+    sink->set_level(spdlog::level::debug);
+    auto logger = std::make_shared<spdlog::logger>(std::string("logger"), sink);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::info("Application Started");
 
-    //Step 1: Registering the Window Class
-    wc.cbSize = sizeof(WNDCLASSEX);
-    wc.style = 0;
-    wc.lpfnWndProc = WndProc;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.hInstance = hInst;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszMenuName = NULL;
-    wc.lpszClassName = g_szClassName;
-    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    Ancorage::GUI::MainWindow mw(hInst, cmdShow);
+    mw.Init();
+    mw.Run();
 
-    if (!RegisterClassEx(&wc)) {
-        MessageBox(NULL, L"Window Registration Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
-        return 0;
-    }
+    Ancorage::XInput::Test1();
 
-    // Step 2: Creating the Window
-    hwnd = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, L"The title of my window",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL,
-        hInst, NULL);
+    mw.Join();
 
-    if (hwnd == NULL) {
-        MessageBox(NULL, L"Window Creation Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
-        return 0;
-    }
-
-    ShowWindow(hwnd, cmdShow);
-    UpdateWindow(hwnd);
-
-    // Step 3: The Message Loop
-    while (GetMessage(&Msg, NULL, 0, 0) > 0) {
-        TranslateMessage(&Msg);
-        DispatchMessage(&Msg);
-    }
+    spdlog::info("Bye");
     return 0;
 }
