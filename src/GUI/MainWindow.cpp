@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "Utils/Utils.h"
+#include "Resources/resource.h"
 
 namespace Ancorage::GUI
 {
@@ -18,22 +19,20 @@ MainWindow::MainWindow(HINSTANCE inst, int cmdShow)
 
 bool MainWindow::Init()
 {
-    WNDCLASSEX wc = {};
+    wc_.cbSize = sizeof(wc_);
+    wc_.style = 0;
+    wc_.lpfnWndProc = &MainWindow::WndProc;
+    wc_.cbClsExtra = 0;
+    wc_.cbWndExtra = 0;
+    wc_.hInstance = inst_;
+    wc_.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wc_.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    wc_.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1);
+    wc_.lpszClassName = className_;
+    wc_.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
-    wc.cbSize = sizeof(wc);
-    wc.style = 0;
-    wc.lpfnWndProc = &MainWindow::WndProc;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.hInstance = inst_;
-    wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
-    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wc.lpszMenuName = nullptr;
-    wc.lpszClassName = className_;
-    wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
-
-    if (!RegisterClassEx(&wc)) {
+    if (!RegisterClassEx(&wc_)) {
         Utils::LogError(L"Could not register window class");
         return false;
     }
@@ -76,6 +75,13 @@ void MainWindow::threadProc()
 LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
     switch (msg) {
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+                case ID_FILE_EXIT:
+                    PostMessage(hwnd, WM_CLOSE, 0, 0);
+                    break;
+            }
+            break;
         case WM_CLOSE:
             DestroyWindow(hwnd);
             break;

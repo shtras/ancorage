@@ -22,5 +22,6 @@ private:
     int cmdShow_ = 0;
     PCTSTR className_ = L"myWindowClass";
     std::thread t_;
+    WNDCLASSEX wc_ = {};
 };
 } // namespace Ancorage::GUI

@@ -53,18 +53,14 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -DRELEASE")
 #set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
-#find_package(OpenSSL REQUIRED)
-#find_package(RapidJSON REQUIRED)
 find_package(Threads REQUIRED)
-#find_package(Filesystem REQUIRED)
-#find_package(CURL REQUIRED)
-
-#find_package(FFmpeg REQUIRED)
 
 add_subdirectory(src)
+
 if (${ENABLE_TESTS})
     #add_subdirectory(tests)
 endif ()
 if (WIN32)
 set_property(TARGET Ancorage PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/run")
+set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Ancorage)
 endif()
