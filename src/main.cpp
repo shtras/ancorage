@@ -8,15 +8,25 @@
 
 int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int cmdShow)
 {
+    std::list<std::shared_ptr<spdlog::sinks::sink>> sinks;
 #ifdef RELEASE
     auto sink =
         std::make_shared<spdlog::sinks::daily_file_sink_mt>("Logs/log.txt", 0, 0, false, 10);
+    sinks.push_back(sink);
 #else
-    auto sink =
-        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 5 * 1024 * 1024, 3);
+    AllocConsole();
+    FILE* stream = NULL;
+    errno_t err = _wfreopen_s(&stream, L"CON", L"w", stdout);
+
+    sinks.push_back(
+        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 5 * 1024 * 1024, 3));
+    sinks.push_back(std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>());
 #endif
-    sink->set_level(spdlog::level::debug);
-    auto logger = std::make_shared<spdlog::logger>(std::string("logger"), sink);
+    auto logger = std::make_shared<spdlog::logger>(std::string{"logger"});
+    for (auto& sink : sinks) {
+        sink->set_level(spdlog::level::debug);
+        logger->sinks().push_back(sink);
+    }
     spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::debug);
     spdlog::info("Application Started");
@@ -25,10 +35,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     mw.Init();
     mw.Run();
 
-    Ancorage::XInput::Test1();
+    Ancorage::XInput::ControllerManager m;
+    m.Run();
 
     mw.Join();
-
+    m.Stop();
     spdlog::info("Bye");
+#ifdef DEBUG
+    FreeConsole();
+#endif
     return 0;
 }

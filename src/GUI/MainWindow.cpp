@@ -2,6 +2,8 @@
 #include "Utils/Utils.h"
 #include "Resources/resource.h"
 
+#include <commctrl.h>
+
 namespace Ancorage::GUI
 {
 LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
@@ -9,6 +11,25 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     auto d = GetWindowLongPtr(hwnd, GWLP_USERDATA);
     auto mw = reinterpret_cast<MainWindow*>(d);
     return mw->wndProc(hwnd, msg, wParam, lParam);
+}
+
+INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM)
+{
+    switch (Message) {
+        case WM_INITDIALOG:
+
+            return TRUE;
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+                case IDOK:
+                    EndDialog(hwnd, IDOK);
+                    break;
+            }
+            break;
+        default:
+            return FALSE;
+    }
+    return TRUE;
 }
 
 MainWindow::MainWindow(HINSTANCE inst, int cmdShow)
@@ -28,7 +49,7 @@ bool MainWindow::Init()
     wc_.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc_.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wc_.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1);
+    wc_.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
     wc_.lpszClassName = className_;
     wc_.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
@@ -75,11 +96,25 @@ void MainWindow::threadProc()
 LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
     switch (msg) {
+        case WM_CREATE: {
+            CreateWindowEx(WS_EX_CLIENTEDGE, WC_BUTTON, L"", WS_CHILD | WS_VISIBLE, 0, 0, 100, 100,
+                hwnd, (HMENU)123, GetModuleHandle(NULL), NULL);
+            break;
+        }
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case ID_FILE_EXIT:
                     PostMessage(hwnd, WM_CLOSE, 0, 0);
                     break;
+                case ID_HELP_ABOUT:
+                    DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_DIALOGBAR), hwnd,
+                        AboutDlgProc);
+                    break;
+                case 123: {
+                    auto event = HIWORD(wParam);
+                    int a = 0;
+                    break;
+                }
             }
             break;
         case WM_CLOSE:
