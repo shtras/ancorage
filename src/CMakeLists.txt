@@ -2,8 +2,8 @@ file(GLOB GUI_SOURCES GUI/*.cpp)
 file(GLOB GUI_RESOURCES Resources/*.rc)
 file(GLOB GUI_INCLUDES GUI/*.h)
 
-file(GLOB ENGINE_SOURCES XInput/*.cpp Utils/*.cpp)
-file(GLOB ENGINE_INCLUDES XInput/*.h Utils/*.h)
+file(GLOB ENGINE_SOURCES XInput/*.cpp Engine/*.cpp BLE/*.cpp Utils/*.cpp)
+file(GLOB ENGINE_INCLUDES XInput/*.h Enigne/*.h BLE/*.h Utils/*.h)
 
 add_library(GUI ${GUI_SOURCES} ${GUI_INCLUDES})
 add_library(Engine ${ENGINE_SOURCES} ${ENGINE_INCLUDES})
@@ -18,6 +18,5 @@ source_group("Resources" FILES ${GUI_RESOURCES})
 target_link_libraries(Engine Xinput)
 
 add_executable(Ancorage WIN32 main.cpp ${GUI_RESOURCES})
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Ancorage)
 
 target_link_libraries(Ancorage GUI Engine Threads::Threads)

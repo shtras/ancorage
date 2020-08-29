@@ -1,5 +1,6 @@
 ﻿#include "GUI/MainWindow.h"
 #include "XInput/XInputTest.h"
+#include "BLE/BLE.h"
 
 #include "spdlog_wrap.h"
 
@@ -16,7 +17,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
 #else
     AllocConsole();
     FILE* stream = NULL;
-    errno_t err = _wfreopen_s(&stream, L"CON", L"w", stdout);
+    _wfreopen_s(&stream, L"CON", L"w", stdout);
 
     sinks.push_back(
         std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 5 * 1024 * 1024, 3));
@@ -34,11 +35,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     Ancorage::GUI::MainWindow mw(hInst, cmdShow);
     mw.Init();
     mw.Run();
+    auto mainHwnd = mw.GetHwnd();
+    Ancorage::BLE::BLEManager bleM;
+    bleM.Connect();
+    bleM.Run();
 
-    Ancorage::XInput::ControllerManager m;
+    Ancorage::XInput::ControllerManager m(mainHwnd);
     m.Run();
 
     mw.Join();
+    bleM.Stop();
     m.Stop();
     spdlog::info("Bye");
 #ifdef DEBUG
