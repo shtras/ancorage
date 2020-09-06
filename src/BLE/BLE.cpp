@@ -1,5 +1,7 @@
 #include "BLE.h"
 
+#include "Event.h"
+
 #include <stdio.h>
 #include <windows.h>
 #include <setupapi.h>
@@ -124,12 +126,12 @@ void BLEManager::Impl::Stop()
 
 void BLEManager::Impl::onEvent(BTH_LE_GATT_EVENT_TYPE, void* param)
 {
-    printf("notification obtained ");
     auto params = (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)param;
-    for (uint32_t i = 0; i < params->CharacteristicValue->DataSize; ++i) {
-        printf(" %x", params->CharacteristicValue->Data[i]);
+    auto message =
+        Message::Parse(params->CharacteristicValue->Data, params->CharacteristicValue->DataSize);
+    if (message) {
+        spdlog::info("Message: {}", message->ToString());
     }
-    printf("\n");
 }
 
 template <typename T>
@@ -170,7 +172,6 @@ bool BLEManager::Impl::init()
     USHORT bufCount = 0;
     HRESULT hr = BluetoothGATTGetServices(handle_, 0, NULL, &bufCount, BLUETOOTH_GATT_FLAG_NONE);
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
-        printf("BluetoothGATTGetServices - Buffer Size %d", hr);
         return false;
     }
     Buffer<BTH_LE_GATT_SERVICE> serviceBuf(sizeof(BTH_LE_GATT_SERVICE) * bufCount);
@@ -179,7 +180,6 @@ bool BLEManager::Impl::init()
         handle_, bufCount, serviceBuf, &numServices, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != S_OK) {
-        printf("BluetoothGATTGetServices - Buffer Size %d", hr);
         return false;
     }
 
@@ -193,7 +193,6 @@ bool BLEManager::Impl::init()
         handle_, serviceBuf, 0, NULL, &charBufferSize, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
-        printf("BluetoothGATTGetCharacteristics - Buffer Size %d", hr);
         return false;
     }
     if (charBufferSize != 1) {
@@ -207,11 +206,11 @@ bool BLEManager::Impl::init()
         handle_, serviceBuf, charBufferSize, charBuf, &numChars, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != S_OK) {
-        printf("BluetoothGATTGetCharacteristics - Actual Data %d", hr);
+        return false;
     }
 
     if (numChars != charBufferSize) {
-        printf("buffer size and buffer size actual size mismatch\r\n");
+        return false;
     }
     //Step 4: now get the list of descriptors. note how the pCharBuffer is required from step 3
     //descriptors are required as we descriptors that are notification based will have to be written
@@ -229,7 +228,7 @@ bool BLEManager::Impl::init()
         handle_, currGattChar_, 0, NULL, &descriptorBufferSize, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
-        printf("BluetoothGATTGetDescriptors - Buffer Size %d", hr);
+        return false;
     }
 
     if (descriptorBufferSize > 0) {
@@ -245,11 +244,11 @@ bool BLEManager::Impl::init()
             descriptorBuf, &numDescriptors, BLUETOOTH_GATT_FLAG_NONE);
 
         if (hr != S_OK) {
-            printf("BluetoothGATTGetDescriptors - Actual Data %d", hr);
+            return false;
         }
 
         if (numDescriptors != descriptorBufferSize) {
-            printf("buffer size and buffer size actual size mismatch\r\n");
+            return false;
         }
 
         for (int kk = 0; kk < numDescriptors; kk++) {
@@ -262,7 +261,7 @@ bool BLEManager::Impl::init()
                 handle_, currGattDescriptor, 0, NULL, &descValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
 
             if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
-                printf("BluetoothGATTGetDescriptorValue - Buffer Size %d", hr);
+                return false;
             }
 
             Buffer<BTH_LE_GATT_DESCRIPTOR_VALUE> pDescValueBuffer(descValueDataSize);
@@ -273,7 +272,7 @@ bool BLEManager::Impl::init()
             hr = BluetoothGATTGetDescriptorValue(handle_, currGattDescriptor,
                 (ULONG)descValueDataSize, pDescValueBuffer, NULL, BLUETOOTH_GATT_FLAG_NONE);
             if (hr != S_OK) {
-                printf("BluetoothGATTGetDescriptorValue - Actual Data %d", hr);
+                return false;
             }
             //you may also get a descriptor that is read (and not notify) andi am guessing the attribute handle is out of limits
             // we set all descriptors that are notifiable to notify us via IsSubstcibeToNotification
@@ -288,10 +287,10 @@ bool BLEManager::Impl::init()
                 hr = BluetoothGATTSetDescriptorValue(
                     handle_, currGattDescriptor, &newValue, BLUETOOTH_GATT_FLAG_NONE);
                 if (hr != S_OK) {
-                    printf("BluetoothGATTGetDescriptorValue - Actual Data %d", hr);
+                    return false;
                 } else {
-                    printf("setting notification for serivice handle %d\n",
-                        currGattDescriptor->ServiceHandle);
+                    spdlog::info("Setting notification for serivice handle {}",
+                        static_cast<int>(currGattDescriptor->ServiceHandle));
                 }
             }
         }
@@ -301,7 +300,8 @@ bool BLEManager::Impl::init()
     BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
 
     if (currGattChar_->IsNotifiable) {
-        printf("Setting Notification for ServiceHandle %d\n", currGattChar_->ServiceHandle);
+        spdlog::info("Setting Notification for ServiceHandle {}",
+            static_cast<int>(currGattChar_->ServiceHandle));
         BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
 
         BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION EventParameterIn;
@@ -311,7 +311,7 @@ bool BLEManager::Impl::init()
             &BLEManager::Impl::event_callback, this, &EventHandle, BLUETOOTH_GATT_FLAG_NONE);
 
         if (hr != S_OK) {
-            printf("BluetoothGATTRegisterEvent - Actual Data %d", hr);
+            return false;
         }
     }
 
@@ -323,7 +323,7 @@ bool BLEManager::Impl::init()
             handle_, currGattChar_, 0, NULL, &charValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
 
         if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
-            printf("BluetoothGATTGetCharacteristicValue - Buffer Size %d", hr);
+            return false;
         }
 
         Buffer<BTH_LE_GATT_CHARACTERISTIC_VALUE> pCharValueBuffer(charValueDataSize);
@@ -336,18 +336,19 @@ bool BLEManager::Impl::init()
             pCharValueBuffer, NULL, BLUETOOTH_GATT_FLAG_NONE);
 
         if (hr != S_OK) {
-            printf("BluetoothGATTGetCharacteristicValue - Actual Data %d", hr);
+            return false;
         }
 
         //print the characeteristic Value
         //for an HR monitor this might be the body sensor location
+        /*
         printf("\n Printing a read (not notifiable) characterstic (maybe) body sensor value");
         for (uint32_t iii = 0; iii < pCharValueBuffer->DataSize;
              iii++) { // ideally check ->DataSize before printing
             printf(" %x", pCharValueBuffer->Data[iii]);
         }
         printf("\n");
-
+        */
         // Free before going to next iteration, or memory leak.
     }
 
