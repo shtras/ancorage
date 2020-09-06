@@ -1,6 +1,9 @@
 #include "BLE.h"
 
 #include "Event.h"
+#include "Utils/Utils.h"
+
+#include "spdlog_wrap.h"
 
 #include <stdio.h>
 #include <windows.h>
@@ -11,12 +14,11 @@
 #include <Bluetoothleapis.h>
 #pragma comment(lib, "SetupAPI")
 #pragma comment(lib, "BluetoothApis.lib")
-#define TO_SEARCH_DEVICE_UUID                                                                      \
-    "{00001623-1212-EFDE-1623-785FEABCD123}" //we use UUID for an HR BLE device
+constexpr char TO_SEARCH_DEVICE_UUID[] = "{00001623-1212-EFDE-1623-785FEABCD123}";
 
 #include <memory>
-
-#include "spdlog_wrap.h"
+#include <list>
+#include <mutex>
 
 namespace Ancorage::BLE
 {
@@ -27,6 +29,7 @@ public:
     bool Connect();
     bool Run();
     void Stop();
+    void SendBTMessage(const std::shared_ptr<Message>& m);
 
 private:
     void threadProc();
@@ -42,6 +45,9 @@ private:
     std::thread t_;
     std::atomic<bool> running_{true};
     PBTH_LE_GATT_CHARACTERISTIC currGattChar_ = nullptr;
+    mutable Utils::Semaphore s_;
+    mutable std::mutex m_;
+    std::list<std::shared_ptr<Message>> messages_;
 };
 
 BLEManager::Impl::~Impl() = default;
@@ -119,6 +125,16 @@ bool BLEManager::Impl::Run()
 void BLEManager::Impl::Stop()
 {
     running_ = false;
+    {
+        std::lock_guard l(m_);
+        auto disconnectM = std::make_shared<HubActionsMessage>();
+        disconnectM->actionType_ = HubActionsMessage::ActionType::Disconnect;
+        //messages_.push_back(disconnectM);
+        auto shutdownM = std::make_shared<HubActionsMessage>();
+        shutdownM->actionType_ = HubActionsMessage::ActionType::SwitchOff;
+        messages_.push_back(shutdownM);
+    }
+    s_.notify();
     if (t_.joinable()) {
         t_.join();
     }
@@ -131,6 +147,8 @@ void BLEManager::Impl::onEvent(BTH_LE_GATT_EVENT_TYPE, void* param)
         Message::Parse(params->CharacteristicValue->Data, params->CharacteristicValue->DataSize);
     if (message) {
         spdlog::info("Message: {}", message->ToString());
+    } else {
+        spdlog::error("Error:(");
     }
 }
 
@@ -217,7 +235,8 @@ bool BLEManager::Impl::init()
     //once IsSubcribeToNotification set to true, we set the appropriate callback function
     //need for setting descriptors for notification according to
     //http://social.msdn.microsoft.com/Forums/en-US/11d3a7ce-182b-4190-bf9d-64fefc3328d9/windows-bluetooth-le-apis-event-callbacks?forum=wdk
-    currGattChar_ = &charBuf[0];
+    currGattChar_ = new BTH_LE_GATT_CHARACTERISTIC;
+    *currGattChar_ = charBuf[0];
     USHORT charValueDataSize;
 
     ///////////////////////////////////////////////////////////////////////////
@@ -349,48 +368,68 @@ bool BLEManager::Impl::init()
         }
         printf("\n");
         */
+        auto message = Message::Parse(pCharValueBuffer->Data, pCharValueBuffer->DataSize);
+        if (message) {
+            spdlog::info("Message: {}", message->ToString());
+        } else {
+            spdlog::error("Error:(");
+        }
+
         // Free before going to next iteration, or memory leak.
     }
 
     return true;
 }
 
+void BLEManager::Impl::SendBTMessage(const std::shared_ptr<Message>& m)
+{
+    if (!running_) {
+        return;
+    }
+    std::lock_guard l(m_);
+    messages_.push_back(m);
+    s_.notify();
+}
+
 void BLEManager::Impl::threadProc()
 {
     HRESULT hr = S_OK;
-    //go into an inf loop that sleeps. you will ideally see notifications from the HR device
     int bakabaka = 0;
     while (running_) {
-        Sleep(1000);
-        if (bakabaka == 1) {
-            bakabaka = 0;
-            BTH_LE_GATT_RELIABLE_WRITE_CONTEXT ReliableWriteContext = NULL;
-            hr = BluetoothGATTBeginReliableWrite(
-                handle_, &ReliableWriteContext, BLUETOOTH_GATT_FLAG_NONE);
+        s_.wait();
+        while (!messages_.empty()) {
+            {
+                std::lock_guard l(m_);
+                const auto& msg = messages_.front();
+                spdlog::info("Sending message: {}", msg->ToString());
+                auto buf = msg->ToBuffer();
+                BTH_LE_GATT_RELIABLE_WRITE_CONTEXT ReliableWriteContext = NULL;
+                hr = BluetoothGATTBeginReliableWrite(
+                    handle_, &ReliableWriteContext, BLUETOOTH_GATT_FLAG_NONE);
 
-            if (SUCCEEDED(hr)) {
-                BTH_LE_GATT_CHARACTERISTIC_VALUE* newValue =
-                    (BTH_LE_GATT_CHARACTERISTIC_VALUE*)malloc(6);
+                if (SUCCEEDED(hr)) {
+                    auto newValue = (BTH_LE_GATT_CHARACTERISTIC_VALUE*)malloc(buf.size());
 
-                RtlZeroMemory(newValue, 6);
-                UCHAR valueData[] = {0x4, 0x0, 0x02, 0x01};
-                newValue->DataSize = valueData[0];
+                    ZeroMemory(newValue, buf.size());
+                    //UCHAR valueData[] = {8, 0x00, 0x81, 0x00, 0x11, 0x51, 0x00, 0x50};
+                    UCHAR valueData[] = {4, 0x00, 0x02, 0x1};
+                    newValue->DataSize = buf.size();
 
-                memcpy(newValue->Data, (UCHAR*)valueData, valueData[0]);
+                    memcpy(newValue->Data, (UCHAR*)buf.data(), buf.size());
 
-                // Set the new characteristic value
-                hr = BluetoothGATTSetCharacteristicValue(
-                    handle_, currGattChar_, newValue, NULL, BLUETOOTH_GATT_FLAG_NONE);
+                    // Set the new characteristic value
+                    hr = BluetoothGATTSetCharacteristicValue(
+                        handle_, currGattChar_, newValue, NULL, BLUETOOTH_GATT_FLAG_NONE);
+                }
+
+                if (NULL != ReliableWriteContext) {
+                    BluetoothGATTEndReliableWrite(
+                        handle_, ReliableWriteContext, BLUETOOTH_GATT_FLAG_NONE);
+                }
+                messages_.pop_front();
             }
-
-            if (NULL != ReliableWriteContext) {
-                BluetoothGATTEndReliableWrite(
-                    handle_, ReliableWriteContext, BLUETOOTH_GATT_FLAG_NONE);
-            }
-        } else if (bakabaka == 2) {
-            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        //printf("look for notification");
     }
 
     CloseHandle(handle_);
@@ -420,5 +459,10 @@ void BLEManager::Run()
 void BLEManager::Stop()
 {
     impl_->Stop();
+}
+
+void BLEManager::SendBTMessage(const std::shared_ptr<Message>& m)
+{
+    impl_->SendBTMessage(m);
 }
 } // namespace Ancorage::BLE

@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "Event.h"
+
 namespace Ancorage::BLE
 {
 class BLEManager
@@ -12,6 +14,8 @@ public:
     bool Connect();
     void Run();
     void Stop();
+
+    void SendBTMessage(const std::shared_ptr<Message>& m);
 
 private:
     class Impl;

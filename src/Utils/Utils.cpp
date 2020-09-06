@@ -25,4 +25,23 @@ uint64_t FromFloat(float f)
     assert(f >= -1.0f && f <= 1.0f);
     return static_cast<uint64_t>((f + 1.0f) * 1000.0f);
 }
+
+Semaphore::Semaphore(int count /* = 0*/)
+    : count_(count)
+{
+}
+
+void Semaphore::notify()
+{
+    std::unique_lock<std::mutex> lock(mtx_);
+    ++count_;
+    cv_.notify_one();
+}
+
+void Semaphore::wait()
+{
+    std::unique_lock<std::mutex> lock(mtx_);
+    cv_.wait(lock, [this]() { return count_ > 0; });
+    --count_;
+}
 } // namespace Ancorage::Utils

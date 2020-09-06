@@ -68,6 +68,7 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
         case Type::HubProperties:
             break;
         case Type::HubActions:
+            res = std::make_unique<HubActionsMessage>();
             break;
         case Type::HubAlerts:
             break;
@@ -75,6 +76,7 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<HubAttachedIOMessage>();
             break;
         case Type::GenericError:
+            res = std::make_unique<GenericErrorMessage>();
             break;
         case Type::HWNetworkCommands:
             break;
@@ -125,12 +127,25 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
     return res;
 }
 
-std::string Message::ToString()
+std::string Message::ToString() const
 {
     std::stringstream ss;
     ss << "Type: " << magic_enum::enum_name(type_);
     toString(ss);
     return ss.str();
+}
+
+std::vector<uint8_t> Message::ToBuffer() const
+{
+    std::vector<uint8_t> res;
+    res.push_back(0);
+    res.push_back(0);
+    res.push_back(static_cast<uint8_t>(magic_enum::enum_integer(type_)));
+    toBuffer(res);
+    assert(res.size() <= 255);
+    // @TODO: Handle longer messages
+    res[0] = static_cast<uint8_t>(res.size());
+    return res;
 }
 
 bool Message::parse(uint8_t* buffer, size_t size)
@@ -168,6 +183,64 @@ bool Message::parseHeader(size_t& itr)
     return true;
 }
 
+HubActionsMessage::HubActionsMessage()
+{
+    type_ = Type::HubActions;
+}
+
+bool HubActionsMessage::parseBody(size_t& itr)
+{
+    auto b0 = buffer_[itr++];
+    auto type = magic_enum::enum_cast<ActionType>(b0);
+    if (type.has_value()) {
+        actionType_ = type.value();
+    } else {
+        spdlog::error("Unknown action type: {}", b0);
+    }
+    return true;
+}
+
+void HubActionsMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl << "Action type: " << magic_enum::enum_name(actionType_);
+}
+
+void HubActionsMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    buf.push_back(static_cast<uint8_t>(magic_enum::enum_integer(actionType_)));
+}
+
+GenericErrorMessage::GenericErrorMessage()
+{
+    type_ = Type::GenericError;
+}
+
+bool GenericErrorMessage::parseBody(size_t& itr)
+{
+    auto b0 = buffer_[itr++];
+    auto b1 = buffer_[itr++];
+    auto type = magic_enum::enum_cast<Type>(b0);
+    if (type.has_value()) {
+        commandType_ = type.value();
+    } else {
+        spdlog::error("Unknown command: {}", b0);
+    }
+    auto code = magic_enum::enum_cast<Code>(b1);
+    if (code.has_value()) {
+        code_ = code.value();
+    } else {
+        spdlog::error("Unknown error code : {}", b1);
+    }
+    return true;
+}
+
+void GenericErrorMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "Command: " << magic_enum::enum_name(commandType_) << std::endl
+       << "Error: " << magic_enum::enum_name(code_);
+}
+
 HubAttachedIOMessage::HubAttachedIOMessage()
 {
     type_ = Message::Type::HubAttachedIO;
@@ -192,7 +265,7 @@ bool HubAttachedIOMessage::parseBody(size_t& itr)
     return true;
 }
 
-void HubAttachedIOMessage::toString(std::stringstream& ss)
+void HubAttachedIOMessage::toString(std::stringstream& ss) const
 {
     ss << std::endl
        << "Port: " << static_cast<int>(portId_) << std::endl

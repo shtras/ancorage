@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <condition_variable>
+#include <mutex>
 
 namespace Ancorage::Utils
 {
@@ -25,4 +27,16 @@ float FromWparam(uint64_t p);
 
 uint64_t FromFloat(float f);
 
+class Semaphore
+{
+public:
+    explicit Semaphore(int count = 0);
+    void notify();
+    void wait();
+
+private:
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int count_;
+};
 } // namespace Ancorage::Utils
