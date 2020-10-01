@@ -7,8 +7,8 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Header Files" FILES ${GUI_
 add_library(GUI ${GUI_SOURCES} ${GUI_INCLUDES})
 
 
-file(GLOB ENGINE_SOURCES BLE/*.cpp XInput/*.cpp Utils/*.cpp)
-file(GLOB ENGINE_INCLUDES BLE/*.h XInput/*.h Utils/*.h)
+file(GLOB ENGINE_SOURCES BLE/*.cpp XInput/*.cpp Utils/*.cpp ControlPlus/*.cpp)
+file(GLOB ENGINE_INCLUDES BLE/*.h XInput/*.h Utils/*.h ControlPlus/*.h)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${ENGINE_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Header Files" FILES ${ENGINE_INCLUDES})
 add_library(Engine ${ENGINE_SOURCES} ${ENGINE_INCLUDES})

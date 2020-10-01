@@ -9,7 +9,7 @@ namespace Ancorage::BLE
 class Message
 {
 public:
-    enum class Type {
+    enum class Type : uint32_t {
         HubProperties = 0x01,
         HubActions = 0x02,
         HubAlerts = 0x03,
@@ -147,4 +147,141 @@ private:
     uint8_t portA_ = UINT8_MAX;
     uint8_t portB_ = UINT8_MAX;
 };
+
+class PortInputFormatSetupSingle : public Message
+{
+public:
+    PortInputFormatSetupSingle();
+
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    uint8_t mode_ = UINT8_MAX;
+    uint32_t deltaInterval_ = UINT32_MAX;
+    bool notificationEnabled_ = false;
+};
+
+class PortInfoRequestMessage : public Message
+{
+public:
+    enum class InfoType : uint8_t {
+        PortValue = 0x00,
+        ModeInfo = 0x01,
+        PossibleCombinations = 0x02,
+        Unknown = 0xff
+    };
+
+    PortInfoRequestMessage();
+
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    InfoType infoType_ = InfoType::Unknown;
+};
+
+class PortValueSingleMessage : public Message
+{
+public:
+    PortValueSingleMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    uint32_t value_ = 0;
+};
+
+class PortOutputCommandMessage : public Message
+{
+public:
+    enum class SubCommand {
+        StartPower = 0x02,
+        SetAccTime = 0x05,
+        SetDecTime = 0x06,
+        StartSpeed = 0x07,
+        StartSpeed2 = 0x08,
+        StartSpeedForTime = 0x09,
+        StartSpeedForTime2 = 0x0a,
+        StartSpeedForDegrees = 0x0b,
+        StartSpeedForDegrees2 = 0x0c,
+        GotoAbsolutePosition = 0x0d,
+        GotoAbsolutePosition2 = 0x0e,
+        PresetEncoder = 0x14,
+        WriteDirect = 0x50,
+        WriteDirectModeData = 0x51,
+        Unknown = 0xff
+    };
+    PortOutputCommandMessage();
+
+public:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+    virtual bool parseSubCommand(size_t& itr) = 0;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    uint8_t portId_ = 0xff;
+    uint8_t startupCompletion_ = 0;
+    SubCommand subCommand_ = SubCommand::Unknown;
+};
+
+class GotoAbsolutePositionPortOutputCommandMessage : public PortOutputCommandMessage
+{
+public:
+    GotoAbsolutePositionPortOutputCommandMessage();
+
+public:
+    void toString(std::stringstream& ss) const override;
+    bool parseSubCommand(size_t& itr) override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    int32_t pos_ = 0;
+    int8_t speed_ = 0;
+    int8_t power_ = 0;
+    int8_t endState_ = 0;
+};
+
+class WriteDirectModeDataPortOutputCommandMessage : public PortOutputCommandMessage
+{
+public:
+    WriteDirectModeDataPortOutputCommandMessage();
+
+public:
+    void toString(std::stringstream& ss) const override;
+    bool parseSubCommand(size_t& itr) override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    uint8_t mode_ = 0xff;
+    std::vector<uint8_t> payload_;
+};
+
+class PortOutputCommandFeedbackMessage : public Message
+{
+public:
+    enum class FeedbackMessage {
+        BufferEmptyInProgress = 0x01,
+        BufferEmptyComplete = 0x02,
+        CommandDiscarded = 0x04,
+        Idle = 0x08,
+        BusyFull = 0x10,
+        Unknown = 0xff
+    };
+    PortOutputCommandFeedbackMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+
+    uint8_t portId1_ = 0xff;
+    FeedbackMessage message1_ = FeedbackMessage::Unknown;
+    uint8_t portId2_ = 0xff;
+    FeedbackMessage message2_ = FeedbackMessage::Unknown;
+    uint8_t portId3_ = 0xff;
+    FeedbackMessage message3_ = FeedbackMessage::Unknown;
+};
+
 } // namespace Ancorage::BLE

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ControlPlus/HubHandler.h"
+
 #include <Windows.h>
 #include <thread>
 #include <atomic>
@@ -20,6 +22,8 @@ private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
     LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
     void threadProc();
+    void valueChange(int v, int delta);
+    void valueSet(int v, int val);
 
     HINSTANCE inst_ = nullptr;
     HWND hwnd_ = nullptr;
@@ -30,5 +34,8 @@ private:
     std::atomic<bool> created_{false};
     HWND controllerDialog_ = nullptr;
     std::map<int64_t, int> buttonEvents_;
+    std::unique_ptr<ControlPlus::HubHandler> hub_ = std::make_unique<ControlPlus::HubHandler>();
+    std::map<int, int> values_;
+    int gear_ = 0;
 };
 } // namespace Ancorage::GUI

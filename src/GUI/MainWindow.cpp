@@ -4,6 +4,8 @@
 #include "Utils/Utils.h"
 #include "Resources/resource.h"
 
+#include "spdlog_wrap.h"
+
 #include <commctrl.h>
 
 #include <sstream>
@@ -109,8 +111,10 @@ void MainWindow::threadProc()
     created_ = true;
     MSG msg = {};
     while (GetMessage(&msg, nullptr, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!IsDialogMessage(controllerDialog_, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 }
 
@@ -169,6 +173,21 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
                 case ID_FILE_EXIT:
                     PostMessage(hwnd, WM_CLOSE, 0, 0);
                     break;
+                case ID_DEVICE_CONNECT:
+                    if (!hub_->Connect()) {
+                        Utils::LogError(L"Connect failed");
+                    }
+                    break;
+                case ID_DEVICE_DISCONNECT:
+                    hub_->Disconnect();
+                    hub_ = std::make_unique<ControlPlus::HubHandler>();
+                    break;
+                case ID_DEVICE_TEST1:
+                    hub_->Test1();
+                    break;
+                case ID_DEVICE_TEST2:
+                    hub_->Test2();
+                    break;
                 case ID_HELP_ABOUT:
                     DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_DIALOGBAR), hwnd,
                         AboutDlgProc);
@@ -195,6 +214,7 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
         } break;
         case Utils::enum_value(Events::Event::LX): {
             setScrollbarLevel(IDC_LX, Utils::FromWparam(wParam) * 50 + 50);
+            valueSet(2, static_cast<int>(-Utils::FromWparam(wParam) * 90));
         } break;
         case Utils::enum_value(Events::Event::RX): {
             setScrollbarLevel(IDC_RX, Utils::FromWparam(wParam) * 50 + 50);
@@ -207,11 +227,94 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
         } break;
         case Utils::enum_value(Events::Event::LT): {
             setScrollbarLevel(IDC_LT, Utils::FromWparam(wParam) * 100);
+            valueSet(0, static_cast<int>(-100 * Utils::FromWparam(wParam)));
+            //valueSet(1, 100 * Utils::FromWparam(wParam));
         } break;
         case Utils::enum_value(Events::Event::RT): {
             setScrollbarLevel(IDC_RT, Utils::FromWparam(wParam) * 100);
+            valueSet(0, static_cast<int>(100 * Utils::FromWparam(wParam)));
+            //valueSet(1, -100 * Utils::FromWparam(wParam));
         } break;
+        case WM_KEYDOWN:
+            switch (wParam) {
+                case 'W':
+                    valueChange(0, 34);
+                    //valueChange(1, -34);
+                    break;
+                case 'S':
+                    valueChange(0, -34);
+                    //valueChange(1, 34);
+                    break;
+                case 'A':
+                    valueSet(3, 60);
+                    break;
+                case 'D':
+                    valueSet(3, -60);
+                    break;
+            }
+            break;
+        case WM_KEYUP:
+            switch (wParam) {
+                case 'W':
+                case 'S':
+                    valueSet(0, 0);
+                    //valueSet(1, 0);
+                    break;
+                case 'A':
+                case 'D':
+                    valueSet(3, 0);
+                    break;
+                case VK_ADD:
+                    gear_ += 90;
+                    hub_->Servo(1, gear_, 60, 60);
+                    break;
+                case VK_SUBTRACT:
+                    gear_ -= 90;
+                    hub_->Servo(1, gear_, 60, 60);
+                    break;
+            }
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
+
+void MainWindow::valueChange(int v, int delta)
+{
+    auto pv = values_[v];
+    pv += delta;
+    if (pv > 100) {
+        pv = 100;
+    }
+    if (pv < -100) {
+        pv = -100;
+    }
+    if (pv != values_.at(v)) {
+        values_[v] = pv;
+        hub_->Motor(v, pv);
+    }
+}
+
+void MainWindow::valueSet(int v, int val)
+{
+    auto pv = values_[v];
+    if (v < 2) {
+        if (val > 100) {
+            val = 100;
+        }
+        if (val < -100) {
+            val = -100;
+        }
+        if (val == pv) {
+            return;
+        }
+        values_[v] = val;
+        hub_->Motor(v, val);
+    } else {
+        if (abs(val - pv) < 10) {
+            return;
+        }
+        values_[v] = val;
+        hub_->Servo(v, val, 60, 60);
+    }
+}
+
 } // namespace Ancorage::GUI

@@ -11,16 +11,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
 {
     std::list<std::shared_ptr<spdlog::sinks::sink>> sinks;
 #ifdef RELEASE
-    auto sink =
-        std::make_shared<spdlog::sinks::daily_file_sink_mt>("Logs/log.txt", 0, 0, false, 10);
-    sinks.push_back(sink);
+    auto dailySink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(
+        "Logs/log.txt", 0, 0, false, static_cast<uint16_t>(10));
+    sinks.push_back(dailySink);
 #else
     AllocConsole();
     FILE* stream = NULL;
     _wfreopen_s(&stream, L"CON", L"w", stdout);
 
     sinks.push_back(
-        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 5 * 1024 * 1024, 3));
+        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Logs/log.txt", 48 * 1024, 3));
     sinks.push_back(std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>());
 #endif
     auto logger = std::make_shared<spdlog::logger>(std::string{"logger"});
@@ -36,15 +36,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     mw.Init();
     mw.Run();
     auto mainHwnd = mw.GetHwnd();
-    Ancorage::BLE::BLEManager bleM;
-    bleM.Connect();
-    bleM.Run();
 
     Ancorage::XInput::ControllerManager m(mainHwnd);
     m.Run();
 
     mw.Join();
-    bleM.Stop();
     m.Stop();
     spdlog::info("Bye");
 #ifdef DEBUG

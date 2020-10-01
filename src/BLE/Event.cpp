@@ -1,24 +1,32 @@
 #include "Event.h"
 #include "Utils/Utils.h"
+#include "EventNames.h"
 
 #include "spdlog_wrap.h"
-#include "magic_enum.hpp"
 
 namespace Ancorage::BLE
 {
-uint16_t Get16(const std::vector<uint8_t> b, size_t& itr)
+uint16_t Get16(const std::vector<uint8_t>& b, size_t& itr)
 {
     uint16_t res = (b[itr + 1] << 8) | b[itr];
     itr += 2;
     return res;
 }
 
-uint32_t Get32(const std::vector<uint8_t> b, size_t& itr)
+uint32_t Get32(const std::vector<uint8_t>& b, size_t& itr)
 {
     auto low = Get16(b, itr);
     auto high = Get16(b, itr);
 
     return (low << 16) | high;
+}
+
+void Set32(std::vector<uint8_t>& b, uint32_t v)
+{
+    b.push_back(v & 0xff);
+    b.push_back(static_cast<uint8_t>((v & 0xff00) >> 8));
+    b.push_back(static_cast<uint8_t>((v & 0xff0000) >> 16));
+    b.push_back(static_cast<uint8_t>((v & 0xff000000) >> 24));
 }
 
 bool Message::IsType(uint8_t b)
@@ -89,10 +97,12 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
         case Type::FWLockStatus:
             break;
         case Type::PortInfoRequest:
+            res = std::make_unique<PortInfoRequestMessage>();
             break;
         case Type::PortModeInfoRequest:
             break;
         case Type::PortInputFormatSetupSingle:
+            res = std::make_unique<PortInputFormatSetupSingle>();
             break;
         case Type::PortInputFormatSetupCombined:
             break;
@@ -101,6 +111,7 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
         case Type::PortModeInfo:
             break;
         case Type::PortValueSingle:
+            res = std::make_unique<PortValueSingleMessage>();
             break;
         case Type::PortValueCombined:
             break;
@@ -110,27 +121,63 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             break;
         case Type::VirtualPortSetup:
             break;
-        case Type::PortOutputCommand:
-            break;
+        case Type::PortOutputCommand: {
+            if (size < 6) {
+                return nullptr;
+            }
+            auto scb = buffer[5];
+            switch (Utils::to_enum<PortOutputCommandMessage::SubCommand>(scb)) {
+                case PortOutputCommandMessage::SubCommand::StartPower:
+                    break;
+                case PortOutputCommandMessage::SubCommand::SetAccTime:
+                    break;
+                case PortOutputCommandMessage::SubCommand::SetDecTime:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeed:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeed2:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeedForTime:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeedForTime2:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeedForDegrees:
+                    break;
+                case PortOutputCommandMessage::SubCommand::StartSpeedForDegrees2:
+                    break;
+                case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition:
+                    break;
+                case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition2:
+                    break;
+                case PortOutputCommandMessage::SubCommand::PresetEncoder:
+                    break;
+                case PortOutputCommandMessage::SubCommand::WriteDirect:
+                    break;
+                case PortOutputCommandMessage::SubCommand::WriteDirectModeData:
+                    res = std::make_unique<WriteDirectModeDataPortOutputCommandMessage>();
+                    break;
+            }
+        } break;
         case Type::PortOutputCommandFeedback:
+            res = std::make_unique<PortOutputCommandFeedbackMessage>();
             break;
     }
     if (!res) {
-        spdlog::error("Unsupported message type: {}",
-            magic_enum::enum_name(Utils::to_enum<Message::Type>(b)));
+        spdlog::error("Unsupported message type: {} {}", static_cast<int>(b),
+            EnumName(Utils::to_enum<Message::Type>(b)));
         return nullptr;
     }
     if (!res->parse(buffer, size)) {
         spdlog::error("Message parsing failed");
-        return nullptr;
+        //return nullptr;
     }
     return res;
-}
+} // namespace Ancorage::BLE
 
 std::string Message::ToString() const
 {
     std::stringstream ss;
-    ss << "Type: " << magic_enum::enum_name(type_);
+    ss << std::endl << "\tType: " << EnumName(type_);
     toString(ss);
     return ss.str();
 }
@@ -138,9 +185,9 @@ std::string Message::ToString() const
 std::vector<uint8_t> Message::ToBuffer() const
 {
     std::vector<uint8_t> res;
-    res.push_back(0);
-    res.push_back(0);
-    res.push_back(static_cast<uint8_t>(magic_enum::enum_integer(type_)));
+    res.push_back(0); // size
+    res.push_back(0); // reserved hub id
+    res.push_back(static_cast<uint8_t>(Utils::enum_value(type_)));
     toBuffer(res);
     assert(res.size() <= 255);
     // @TODO: Handle longer messages
@@ -191,23 +238,18 @@ HubActionsMessage::HubActionsMessage()
 bool HubActionsMessage::parseBody(size_t& itr)
 {
     auto b0 = buffer_[itr++];
-    auto type = magic_enum::enum_cast<ActionType>(b0);
-    if (type.has_value()) {
-        actionType_ = type.value();
-    } else {
-        spdlog::error("Unknown action type: {}", b0);
-    }
+    actionType_ = Utils::to_enum<ActionType>(b0);
     return true;
 }
 
 void HubActionsMessage::toString(std::stringstream& ss) const
 {
-    ss << std::endl << "Action type: " << magic_enum::enum_name(actionType_);
+    ss << std::endl << "\tAction type: " << EnumName(actionType_);
 }
 
 void HubActionsMessage::toBuffer(std::vector<uint8_t>& buf) const
 {
-    buf.push_back(static_cast<uint8_t>(magic_enum::enum_integer(actionType_)));
+    buf.push_back(static_cast<uint8_t>(Utils::enum_value(actionType_)));
 }
 
 GenericErrorMessage::GenericErrorMessage()
@@ -219,26 +261,16 @@ bool GenericErrorMessage::parseBody(size_t& itr)
 {
     auto b0 = buffer_[itr++];
     auto b1 = buffer_[itr++];
-    auto type = magic_enum::enum_cast<Type>(b0);
-    if (type.has_value()) {
-        commandType_ = type.value();
-    } else {
-        spdlog::error("Unknown command: {}", b0);
-    }
-    auto code = magic_enum::enum_cast<Code>(b1);
-    if (code.has_value()) {
-        code_ = code.value();
-    } else {
-        spdlog::error("Unknown error code : {}", b1);
-    }
+    commandType_ = Utils::to_enum<Type>(b0);
+    code_ = Utils::to_enum<Code>(b1);
     return true;
 }
 
 void GenericErrorMessage::toString(std::stringstream& ss) const
 {
     ss << std::endl
-       << "Command: " << magic_enum::enum_name(commandType_) << std::endl
-       << "Error: " << magic_enum::enum_name(code_);
+       << "\tCommand: " << EnumName(commandType_) << std::endl
+       << "\tError: " << EnumName(code_);
 }
 
 HubAttachedIOMessage::HubAttachedIOMessage()
@@ -254,7 +286,7 @@ bool HubAttachedIOMessage::parseBody(size_t& itr)
         uint16_t typeId = Get16(buffer_, itr);
         ioTypeId_ = Utils::to_enum<IOTypeID>(typeId);
     }
-    if (event_ == Event::AttachedIO) {
+    if (event_ == Event::AttachedIO || event_ == Event::DetachedIO) {
         hardwareRev_ = Get32(buffer_, itr);
         softwareRev_ = Get32(buffer_, itr);
     }
@@ -268,18 +300,230 @@ bool HubAttachedIOMessage::parseBody(size_t& itr)
 void HubAttachedIOMessage::toString(std::stringstream& ss) const
 {
     ss << std::endl
-       << "Port: " << static_cast<int>(portId_) << std::endl
-       << "Event: " << magic_enum::enum_name(event_);
+       << "\tPort: " << static_cast<int>(portId_) << std::endl
+       << "\tEvent: " << EnumName(event_);
     if (event_ == Event::AttachedIO || event_ == Event::AttachedVirtualIO) {
-        ss << std::endl << "IO type: " << magic_enum::enum_name(ioTypeId_);
+        ss << std::endl << "\tIO type: " << EnumName(ioTypeId_);
     }
     if (event_ == Event::AttachedIO) {
         ss << std::endl
-           << "Hardware revision: " << hardwareRev_ << std::endl
-           << "Software revision: " << softwareRev_;
+           << "\tHardware revision: " << hardwareRev_ << std::endl
+           << "\tSoftware revision: " << softwareRev_;
     }
     if (event_ == Event::AttachedVirtualIO) {
-        ss << std::endl << "Port ID A: " << portA_ << std::endl << "Port ID B: " << portB_;
+        ss << std::endl << "\tPort ID A: " << portA_ << std::endl << "\tPort ID B: " << portB_;
     }
 }
+
+PortInputFormatSetupSingle::PortInputFormatSetupSingle()
+{
+    type_ = Type::PortInputFormatSetupSingle;
+}
+
+bool PortInputFormatSetupSingle::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    mode_ = buffer_[itr++];
+    deltaInterval_ = Get32(buffer_, itr);
+    notificationEnabled_ = buffer_[itr++];
+    return true;
+}
+
+void PortInputFormatSetupSingle::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId_) << std::endl
+       << "\tMode" << static_cast<int>(mode_) << std::endl
+       << "\tDelta Interval: " << deltaInterval_ << std::endl
+       << "\tNotification Enabled: " << notificationEnabled_;
+}
+
+void PortInputFormatSetupSingle::toBuffer(std::vector<uint8_t>& buf) const
+{
+    buf.push_back(portId_);
+    buf.push_back(mode_);
+    Set32(buf, deltaInterval_);
+    buf.push_back(notificationEnabled_);
+}
+
+PortInfoRequestMessage::PortInfoRequestMessage()
+{
+    type_ = Type::PortInfoRequest;
+}
+
+bool PortInfoRequestMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    infoType_ = Utils::to_enum<InfoType>(buffer_[itr++]);
+    return true;
+}
+
+void PortInfoRequestMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort: " << static_cast<int>(portId_) << std::endl
+       << "\tInfo Type: " << EnumName(infoType_);
+}
+
+void PortInfoRequestMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    buf.push_back(portId_);
+    buf.push_back(Utils::enum_value(infoType_));
+}
+
+PortValueSingleMessage::PortValueSingleMessage()
+{
+    type_ = Type::PortValueSingle;
+}
+
+bool PortValueSingleMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    if (size_ == 5) {
+        value_ = buffer_[itr++];
+    } else if (size_ == 6) {
+        value_ = Get16(buffer_, itr);
+    } else if (size_ == 8) {
+        value_ = Get32(buffer_, itr);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+void PortValueSingleMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId_) << std::endl
+       << "\tValue: " << value_;
+}
+
+PortOutputCommandMessage::PortOutputCommandMessage()
+{
+    type_ = Type::PortOutputCommand;
+}
+
+bool PortOutputCommandMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    startupCompletion_ = buffer_[itr++];
+    if (!parseSubCommand(itr)) {
+        return false;
+    }
+    return true;
+}
+
+void PortOutputCommandMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort: " << static_cast<int>(portId_) << std::endl
+       << "\tStartup Completion: " << static_cast<int>(startupCompletion_) << std::endl
+       << "\tSub command: " << EnumName(subCommand_);
+}
+
+void PortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    buf.push_back(portId_);
+    buf.push_back(startupCompletion_);
+    buf.push_back(static_cast<uint8_t>(Utils::enum_value(subCommand_)));
+}
+
+GotoAbsolutePositionPortOutputCommandMessage::GotoAbsolutePositionPortOutputCommandMessage()
+{
+    subCommand_ = SubCommand::GotoAbsolutePosition;
+}
+
+void GotoAbsolutePositionPortOutputCommandMessage::toString(std::stringstream& ss) const
+{
+    PortOutputCommandMessage::toString(ss);
+    ss << std::endl
+       << "\tAbsPos: " << pos_ << std::endl
+       << "\tSpeed: " << static_cast<int>(speed_) << std::endl
+       << "\tPower: " << static_cast<int>(power_) << std::endl
+       << "\tEndState: " << static_cast<int>(endState_);
+}
+
+bool GotoAbsolutePositionPortOutputCommandMessage::parseSubCommand(size_t& itr)
+{
+    pos_ = Get32(buffer_, itr);
+    speed_ = buffer_[itr++];
+    power_ = buffer_[itr++];
+    endState_ = buffer_[itr++];
+    return true;
+}
+
+void GotoAbsolutePositionPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    PortOutputCommandMessage::toBuffer(buf);
+    Set32(buf, pos_);
+    buf.push_back(speed_);
+    buf.push_back(power_);
+    buf.push_back(endState_);
+    buf.push_back(0);
+}
+
+WriteDirectModeDataPortOutputCommandMessage::WriteDirectModeDataPortOutputCommandMessage()
+{
+    subCommand_ = SubCommand::WriteDirectModeData;
+}
+
+void WriteDirectModeDataPortOutputCommandMessage::toString(std::stringstream& ss) const
+{
+    PortOutputCommandMessage::toString(ss);
+    ss << std::endl << "\tMode: " << static_cast<int>(mode_);
+}
+
+bool WriteDirectModeDataPortOutputCommandMessage::parseSubCommand(size_t& itr)
+{
+    mode_ = buffer_[itr++];
+    while (itr < size_) {
+        payload_.push_back(buffer_[itr++]);
+    }
+    return true;
+}
+
+void WriteDirectModeDataPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    PortOutputCommandMessage::toBuffer(buf);
+    buf.push_back(mode_);
+    buf.insert(buf.end(), payload_.begin(), payload_.end());
+}
+
+PortOutputCommandFeedbackMessage::PortOutputCommandFeedbackMessage()
+{
+    type_ = Type::PortOutputCommandFeedback;
+}
+
+bool PortOutputCommandFeedbackMessage::parseBody(size_t& itr)
+{
+    portId1_ = buffer_[itr++];
+    message1_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
+    if (itr < size_) {
+        portId2_ = buffer_[itr++];
+        message2_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
+    }
+    if (itr < size_) {
+        portId3_ = buffer_[itr++];
+        message3_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
+    }
+    return true;
+}
+
+void PortOutputCommandFeedbackMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId1_) << std::endl
+       << "\tMessage: " << Utils::enum_value(message1_) << " " << EnumName(message1_);
+    if (portId2_ != 0xff) {
+        ss << std::endl
+           << "\tPort ID 2: " << static_cast<int>(portId2_) << std::endl
+           << "\tMessage 2: " << EnumName(message2_);
+    }
+    if (portId3_ != 0xff) {
+        ss << std::endl
+           << "\tPort ID 3: " << static_cast<int>(portId3_) << std::endl
+           << "\tMessage 3: " << EnumName(message3_);
+    }
+}
+
 } // namespace Ancorage::BLE

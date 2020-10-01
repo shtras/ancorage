@@ -56,6 +56,13 @@ BEGIN
     BEGIN
         MENUITEM "Exit",                        ID_FILE_EXIT
     END
+    POPUP "Device"
+    BEGIN
+        MENUITEM "Connect",                     ID_DEVICE_CONNECT
+        MENUITEM "Disconnect",                  ID_DEVICE_DISCONNECT
+        MENUITEM "Test1",                       ID_DEVICE_TEST1
+        MENUITEM "Test2",                       ID_DEVICE_TEST2
+    END
     POPUP "Help"
     BEGIN
         MENUITEM "About",                       ID_HELP_ABOUT
