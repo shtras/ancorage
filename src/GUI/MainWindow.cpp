@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 #include "Utils/Utils.h"
-#include "Engine/Events.h"
+#include "GUI/IDs.h"
 #include "Utils/Utils.h"
 #include "Resources/resource.h"
 
@@ -163,6 +163,22 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
             ShowWindow(controllerDialog_, SW_SHOW);
             auto edit = GetDlgItem(controllerDialog_, IDC_EDIT1);
             SetWindowText(edit, L"Here be status");
+
+            profile_->Load("profile.json");
+            auto hubs = profile_->GetHubs();
+            auto menu = GetMenu(hwnd);
+            auto deviceMenu = GetSubMenu(menu, 1);
+            int menuId = Utils::enum_value(GUI::Event::LAST_EVENT);
+            for (const auto& hub : hubs) {
+                auto subMenu = CreatePopupMenu();
+                bool res = AppendMenu(subMenu, MF_STRING, menuId, L"&Connect");
+                connectEvents_[menuId++] = hub;
+                res = AppendMenu(subMenu, MF_STRING, menuId, L"&Disconnect");
+                disconnectEvents_[menuId++] = hub;
+                res = AppendMenu(deviceMenu, MF_STRING | MF_POPUP,
+                    reinterpret_cast<UINT_PTR>(subMenu), hub.c_str());
+            }
+
             //auto w = CreateWindowEx(WS_EX_CLIENTEDGE, MAKEINTRESOURCE(IDD_FORMVIEW), L"",
             //    WS_CHILD | WS_VISIBLE, 0, 0, 100, 100, hwnd, (HMENU)123, GetModuleHandle(NULL),
             //    NULL);
@@ -173,25 +189,23 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
                 case ID_FILE_EXIT:
                     PostMessage(hwnd, WM_CLOSE, 0, 0);
                     break;
-                case ID_DEVICE_CONNECT:
-                    if (!hub_->Connect()) {
-                        Utils::LogError(L"Connect failed");
-                    }
-                    break;
-                case ID_DEVICE_DISCONNECT:
-                    hub_->Disconnect();
-                    hub_ = std::make_unique<ControlPlus::HubHandler>();
-                    break;
                 case ID_DEVICE_TEST1:
-                    hub_->Test1();
+                    //hub_->Test1();
                     break;
                 case ID_DEVICE_TEST2:
-                    hub_->Test2();
+                    //hub_->Test2();
                     break;
                 case ID_HELP_ABOUT:
                     DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_DIALOGBAR), hwnd,
                         AboutDlgProc);
                     break;
+                default: {
+                    if (connectEvents_.count(wParam) > 0) {
+                        profile_->Connect(connectEvents_.at(wParam));
+                    } else if (disconnectEvents_.count(wParam) > 0) {
+                        profile_->Disconnect(disconnectEvents_.at(wParam));
+                    }
+                } break;
             }
             break;
         case WM_CLOSE:
@@ -200,79 +214,51 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
         case WM_DESTROY:
             PostQuitMessage(0);
             break;
-        case Utils::enum_value(Events::Event::ButtonDown): {
+        case Utils::enum_value(GUI::Event::ButtonDown): {
             if (buttonEvents_.count(wParam) > 0) {
                 auto btn = GetDlgItem(controllerDialog_, buttonEvents_.at(wParam));
                 SendMessage(btn, BM_SETSTATE, TRUE, 0);
             }
         } break;
-        case Utils::enum_value(Events::Event::ButtonUp): {
+        case Utils::enum_value(GUI::Event::ButtonUp): {
             if (buttonEvents_.count(wParam) > 0) {
                 auto btn = GetDlgItem(controllerDialog_, buttonEvents_.at(wParam));
                 SendMessage(btn, BM_SETSTATE, FALSE, 0);
             }
         } break;
-        case Utils::enum_value(Events::Event::LX): {
+        case Utils::enum_value(GUI::Event::LX): {
             setScrollbarLevel(IDC_LX, Utils::FromWparam(wParam) * 50 + 50);
             valueSet(2, static_cast<int>(-Utils::FromWparam(wParam) * 90));
         } break;
-        case Utils::enum_value(Events::Event::RX): {
+        case Utils::enum_value(GUI::Event::RX): {
             setScrollbarLevel(IDC_RX, Utils::FromWparam(wParam) * 50 + 50);
         } break;
-        case Utils::enum_value(Events::Event::LY): {
+        case Utils::enum_value(GUI::Event::LY): {
             setScrollbarLevel(IDC_LY, Utils::FromWparam(wParam) * 50 + 50);
         } break;
-        case Utils::enum_value(Events::Event::RY): {
+        case Utils::enum_value(GUI::Event::RY): {
             setScrollbarLevel(IDC_RY, Utils::FromWparam(wParam) * 50 + 50);
         } break;
-        case Utils::enum_value(Events::Event::LT): {
+        case Utils::enum_value(GUI::Event::LT): {
             setScrollbarLevel(IDC_LT, Utils::FromWparam(wParam) * 100);
             valueSet(0, static_cast<int>(-100 * Utils::FromWparam(wParam)));
             //valueSet(1, 100 * Utils::FromWparam(wParam));
         } break;
-        case Utils::enum_value(Events::Event::RT): {
+        case Utils::enum_value(GUI::Event::RT): {
             setScrollbarLevel(IDC_RT, Utils::FromWparam(wParam) * 100);
             valueSet(0, static_cast<int>(100 * Utils::FromWparam(wParam)));
             //valueSet(1, -100 * Utils::FromWparam(wParam));
         } break;
         case WM_KEYDOWN:
-            switch (wParam) {
-                case 'W':
-                    valueChange(0, 34);
-                    //valueChange(1, -34);
-                    break;
-                case 'S':
-                    valueChange(0, -34);
-                    //valueChange(1, 34);
-                    break;
-                case 'A':
-                    valueSet(3, 60);
-                    break;
-                case 'D':
-                    valueSet(3, -60);
-                    break;
+            if (wParam <= UINT8_MAX) {
+                profile_->ButtonDown(static_cast<uint8_t>(wParam));
             }
             break;
         case WM_KEYUP:
-            switch (wParam) {
-                case 'W':
-                case 'S':
-                    valueSet(0, 0);
-                    //valueSet(1, 0);
-                    break;
-                case 'A':
-                case 'D':
-                    valueSet(3, 0);
-                    break;
-                case VK_ADD:
-                    gear_ += 90;
-                    hub_->Servo(1, gear_, 60, 60);
-                    break;
-                case VK_SUBTRACT:
-                    gear_ -= 90;
-                    hub_->Servo(1, gear_, 60, 60);
-                    break;
+            if (wParam <= UINT8_MAX) {
+                profile_->ButtonUp(static_cast<uint8_t>(wParam));
             }
+            break;
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
@@ -289,7 +275,7 @@ void MainWindow::valueChange(int v, int delta)
     }
     if (pv != values_.at(v)) {
         values_[v] = pv;
-        hub_->Motor(v, pv);
+        //hub_->Motor(v, pv);
     }
 }
 
@@ -307,13 +293,13 @@ void MainWindow::valueSet(int v, int val)
             return;
         }
         values_[v] = val;
-        hub_->Motor(v, val);
+        //hub_->Motor(v, val);
     } else {
         if (abs(val - pv) < 10) {
             return;
         }
         values_[v] = val;
-        hub_->Servo(v, val, 60, 60);
+        //hub_->Servo(v, val, 60, 60);
     }
 }
 

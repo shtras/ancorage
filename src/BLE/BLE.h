@@ -11,7 +11,7 @@ class BLEManager
 public:
     BLEManager();
     ~BLEManager();
-    bool Connect();
+    bool Connect(const std::wstring& id);
     void Run();
     void Stop();
 

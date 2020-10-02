@@ -21,6 +21,8 @@ constexpr std::enable_if_t<std::is_enum_v<E> && std::is_integral_v<T>, E> to_enu
     return static_cast<E>(value);
 }
 
+std::string ReadFile(const std::string& fileName);
+
 void LogError(std::wstring&& msg);
 
 float FromWparam(uint64_t p);

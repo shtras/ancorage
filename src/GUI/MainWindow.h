@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ControlPlus/HubHandler.h"
+#include "ControlPlus/Profile.h"
 
 #include <Windows.h>
 #include <thread>
@@ -34,8 +34,10 @@ private:
     std::atomic<bool> created_{false};
     HWND controllerDialog_ = nullptr;
     std::map<int64_t, int> buttonEvents_;
-    std::unique_ptr<ControlPlus::HubHandler> hub_ = std::make_unique<ControlPlus::HubHandler>();
+    std::unique_ptr<ControlPlus::Profile> profile_ = std::make_unique<ControlPlus::Profile>();
     std::map<int, int> values_;
     int gear_ = 0;
+    std::map<WPARAM, std::wstring> connectEvents_;
+    std::map<WPARAM, std::wstring> disconnectEvents_;
 };
 } // namespace Ancorage::GUI

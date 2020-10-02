@@ -26,7 +26,7 @@ class BLEManager::Impl
 {
 public:
     ~Impl();
-    bool Connect();
+    bool Connect(const std::wstring& id);
     bool Run();
     void Stop();
     void SendBTMessage(const std::shared_ptr<Message>& m);
@@ -41,6 +41,7 @@ private:
         p->onEvent(type, param);
     }
 
+    std::wstring id_;
     HANDLE handle_ = nullptr;
     std::thread t_;
     std::atomic<bool> running_{true};
@@ -53,7 +54,7 @@ private:
 
 BLEManager::Impl::~Impl() = default;
 
-bool BLEManager::Impl::Connect()
+bool BLEManager::Impl::Connect(const std::wstring& id)
 {
     auto guidStr = L"{00001623-1212-EFDE-1623-785FEABCD123}";
     GUID guid;
@@ -103,14 +104,19 @@ bool BLEManager::Impl::Connect()
             if (!SetupDiGetDeviceInterfaceDetail(hDI, &did, didd, size, &size, &dd)) {
                 return false;
             }
-            ++deviceIdx;
-            if (deviceIdx != 2) {
-                continue;
+
+            std::wstring devicePath{didd->DevicePath};
+            if (devicePath.find(id) != std::wstring::npos) {
+                handle_ = CreateFile(didd->DevicePath, GENERIC_WRITE | GENERIC_READ,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                break;
             }
-            handle_ = CreateFile(didd->DevicePath, GENERIC_WRITE | GENERIC_READ,
-                FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-            break;
+            ++deviceIdx;
         }
+    }
+    if (!handle_) {
+        spdlog::error("Device not found");
+        return false;
     }
     spdlog::info("Connection complete");
     return true;
@@ -455,9 +461,9 @@ BLEManager::~BLEManager()
     impl_->Stop();
 };
 
-bool BLEManager::Connect()
+bool BLEManager::Connect(const std::wstring& id)
 {
-    return impl_->Connect();
+    return impl_->Connect(id);
 }
 
 void BLEManager::Run()

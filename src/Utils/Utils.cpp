@@ -5,8 +5,26 @@
 #include <Windows.h>
 #include <assert.h>
 
+#include <fstream>
+
 namespace Ancorage::Utils
 {
+std::string ReadFile(const std::string& fileName)
+{
+    std::ifstream t(fileName);
+    if (!t.good()) {
+        spdlog::error("Failed to open {}", fileName);
+        return "";
+    }
+    std::string str;
+    t.seekg(0, std::ios::end);
+    str.reserve(static_cast<size_t>(t.tellg()));
+    t.seekg(0, std::ios::beg);
+
+    str.assign(std::istreambuf_iterator<char>(t), std::istreambuf_iterator<char>());
+    return str;
+}
+
 void LogError(std::wstring&& str)
 {
     spdlog::error(str);

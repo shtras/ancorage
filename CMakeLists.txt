@@ -1,8 +1,9 @@
-project(Ancorage)
-cmake_minimum_required(VERSION 3.8)
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
-    cmake_policy(SET CMP0074 NEW)
-endif ()
+cmake_minimum_required(VERSION 3.12)
+cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0048 NEW)
+
+project(Ancorage VERSION 1.0.0)
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif ()
@@ -25,6 +26,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
+include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
 set(CMAKE_CXX_STANDARD 17)

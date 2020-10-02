@@ -1,6 +1,6 @@
 #include "XInputTest.h"
 
-#include "Engine/Events.H"
+#include "GUI/IDs.h"
 #include "Utils/Utils.h"
 
 #include "spdlog_wrap.h"
@@ -61,7 +61,7 @@ bool ControllerManager::queryControllers()
             if (pressed != ctr.Buttons[b]) {
                 spdlog::info("Button {} is now {}", b, (pressed ? "pressed" : "released"));
                 ctr.Buttons[b] = pressed;
-                auto event = pressed ? Events::Event::ButtonDown : Events::Event::ButtonUp;
+                auto event = pressed ? GUI::Event::ButtonDown : GUI::Event::ButtonUp;
                 SendMessage(hwnd_, Utils::enum_value(event), b, 0);
             }
         }
@@ -72,7 +72,7 @@ bool ControllerManager::queryControllers()
         auto ry = stickValue(state.Gamepad.sThumbRY);
         auto lt = triggerValue(state.Gamepad.bLeftTrigger);
         auto rt = triggerValue(state.Gamepad.bRightTrigger);
-        auto compareAssign = [&](float& v1, float v2, Events::Event event) {
+        auto compareAssign = [&](float& v1, float v2, GUI::Event event) {
             if (v2 < -1.0f) {
                 v2 = -1.0f;
             }
@@ -80,16 +80,16 @@ bool ControllerManager::queryControllers()
                 return;
             }
             v1 = v2;
-            if (event != Events::Event::DummyEvent) {
+            if (event != GUI::Event::DummyEvent) {
                 SendMessage(hwnd_, Utils::enum_value(event), Utils::FromFloat(v1), 0);
             }
         };
-        compareAssign(ctr.LX, lx, Events::Event::LX);
-        compareAssign(ctr.RX, rx, Events::Event::RX);
-        compareAssign(ctr.LY, ly, Events::Event::LY);
-        compareAssign(ctr.RY, ry, Events::Event::RY);
-        compareAssign(ctr.LT, lt, Events::Event::LT);
-        compareAssign(ctr.RT, rt, Events::Event::RT);
+        compareAssign(ctr.LX, lx, GUI::Event::LX);
+        compareAssign(ctr.RX, rx, GUI::Event::RX);
+        compareAssign(ctr.LY, ly, GUI::Event::LY);
+        compareAssign(ctr.RY, ry, GUI::Event::RY);
+        compareAssign(ctr.LT, lt, GUI::Event::LT);
+        compareAssign(ctr.RT, rt, GUI::Event::RT);
     }
     return true;
 }
