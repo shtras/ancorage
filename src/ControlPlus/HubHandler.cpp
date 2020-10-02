@@ -4,9 +4,9 @@
 
 namespace Ancorage::ControlPlus
 {
-HubHandler::HubHandler(const std::wstring& id, const std::wstring& name)
-    : id_(id)
-    , name_(name)
+HubHandler::HubHandler(std::wstring id, std::wstring name)
+    : id_(std::move(id))
+    , name_(std::move(name))
 {
 }
 

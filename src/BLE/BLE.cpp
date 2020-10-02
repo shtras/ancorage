@@ -5,7 +5,6 @@
 
 #include "spdlog_wrap.h"
 
-#include <stdio.h>
 #include <windows.h>
 #include <setupapi.h>
 #include <devguid.h>
@@ -33,7 +32,7 @@ private:
     void threadProc();
     bool init();
     void onEvent(BTH_LE_GATT_EVENT_TYPE, void* param);
-    static void event_callback(BTH_LE_GATT_EVENT_TYPE type, void* param, void* data)
+    static void CALLBACK eventCallback(BTH_LE_GATT_EVENT_TYPE type, void* param, void* data)
     {
         auto p = static_cast<BLEManager::Impl*>(data);
         p->onEvent(type, param);
@@ -75,7 +74,7 @@ bool BLEManager::Impl::Connect(const std::wstring& id)
 
     DWORD deviceIdx = 0;
     for (;;) {
-        auto ret = SetupDiEnumDeviceInterfaces(hDI, NULL, &guid, deviceIdx, &did);
+        auto ret = SetupDiEnumDeviceInterfaces(hDI, nullptr, &guid, deviceIdx, &did);
         if (!ret) {
             if (GetLastError() != ERROR_NO_MORE_ITEMS) {
                 return false;
@@ -86,7 +85,7 @@ bool BLEManager::Impl::Connect(const std::wstring& id)
         DWORD size = 0;
         PSP_DEVICE_INTERFACE_DETAIL_DATA didd = nullptr;
 
-        if (!SetupDiGetDeviceInterfaceDetail(hDI, &did, nullptr, size, &size, 0)) {
+        if (!SetupDiGetDeviceInterfaceDetail(hDI, &did, nullptr, size, &size, nullptr)) {
             auto err = GetLastError();
 
             if (err != ERROR_INSUFFICIENT_BUFFER) {
@@ -106,7 +105,7 @@ bool BLEManager::Impl::Connect(const std::wstring& id)
             std::wstring devicePath{didd->DevicePath};
             if (devicePath.find(id) != std::wstring::npos) {
                 handle_ = CreateFile(didd->DevicePath, GENERIC_WRITE | GENERIC_READ,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                    FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
                 break;
             }
             ++deviceIdx;
@@ -204,13 +203,13 @@ bool BLEManager::Impl::init()
     // first send 0,NULL as the parameters to BluetoothGATTServices inorder to get the number of
     // services in serviceBufferCount
     USHORT bufCount = 0;
-    HRESULT hr = BluetoothGATTGetServices(handle_, 0, NULL, &bufCount, BLUETOOTH_GATT_FLAG_NONE);
+    HRESULT hr = BluetoothGATTGetServices(handle_, 0, nullptr, &bufCount, BLUETOOTH_GATT_FLAG_NONE);
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
         spdlog::error("GetSetvices1 failed: {0:x}", hr);
         return false;
     }
     Buffer<BTH_LE_GATT_SERVICE> serviceBuf(sizeof(BTH_LE_GATT_SERVICE) * bufCount);
-    USHORT numServices;
+    USHORT numServices = 0;
     hr = BluetoothGATTGetServices(
         handle_, bufCount, serviceBuf, &numServices, BLUETOOTH_GATT_FLAG_NONE);
 
@@ -224,9 +223,9 @@ bool BLEManager::Impl::init()
     // Determine Characteristic Buffer Size
     ////////////////////////////////////////////////////////////////////////////
 
-    USHORT charBufferSize;
+    USHORT charBufferSize = 0;
     hr = BluetoothGATTGetCharacteristics(
-        handle_, serviceBuf, 0, NULL, &charBufferSize, BLUETOOTH_GATT_FLAG_NONE);
+        handle_, serviceBuf, 0, nullptr, &charBufferSize, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
         spdlog::error("GetCharacteristics1 failed: {0:x}", hr);
@@ -238,7 +237,7 @@ bool BLEManager::Impl::init()
     }
 
     Buffer<BTH_LE_GATT_CHARACTERISTIC> charBuf(charBufferSize * sizeof(BTH_LE_GATT_CHARACTERISTIC));
-    USHORT numChars;
+    USHORT numChars = 0;
     hr = BluetoothGATTGetCharacteristics(
         handle_, serviceBuf, charBufferSize, charBuf, &numChars, BLUETOOTH_GATT_FLAG_NONE);
 
@@ -258,14 +257,14 @@ bool BLEManager::Impl::init()
     //http://social.msdn.microsoft.com/Forums/en-US/11d3a7ce-182b-4190-bf9d-64fefc3328d9/windows-bluetooth-le-apis-event-callbacks?forum=wdk
     currGattChar_ = new BTH_LE_GATT_CHARACTERISTIC;
     *currGattChar_ = charBuf[0];
-    USHORT charValueDataSize;
+    USHORT charValueDataSize = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     // Determine Descriptor Buffer Size
     ////////////////////////////////////////////////////////////////////////////
-    USHORT descriptorBufferSize;
+    USHORT descriptorBufferSize = 0;
     hr = BluetoothGATTGetDescriptors(
-        handle_, currGattChar_, 0, NULL, &descriptorBufferSize, BLUETOOTH_GATT_FLAG_NONE);
+        handle_, currGattChar_, 0, nullptr, &descriptorBufferSize, BLUETOOTH_GATT_FLAG_NONE);
 
     if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
         spdlog::error("GetDescriptors1 failed: {0:x}", hr);
@@ -280,7 +279,7 @@ bool BLEManager::Impl::init()
         // Retrieve Descriptors
         ////////////////////////////////////////////////////////////////////////////
 
-        USHORT numDescriptors;
+        USHORT numDescriptors = 0;
         hr = BluetoothGATTGetDescriptors(handle_, currGattChar_, descriptorBufferSize,
             descriptorBuf, &numDescriptors, BLUETOOTH_GATT_FLAG_NONE);
 
@@ -299,9 +298,9 @@ bool BLEManager::Impl::init()
             ////////////////////////////////////////////////////////////////////////////
             // Determine Descriptor Value Buffer Size
             ////////////////////////////////////////////////////////////////////////////
-            USHORT descValueDataSize;
-            hr = BluetoothGATTGetDescriptorValue(
-                handle_, currGattDescriptor, 0, NULL, &descValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
+            USHORT descValueDataSize = 0;
+            hr = BluetoothGATTGetDescriptorValue(handle_, currGattDescriptor, 0, nullptr,
+                &descValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
 
             if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
                 spdlog::error("GetDescriptorValue1 failed: {0:x}", hr);
@@ -314,7 +313,7 @@ bool BLEManager::Impl::init()
             ////////////////////////////////////////////////////////////////////////////
 
             hr = BluetoothGATTGetDescriptorValue(handle_, currGattDescriptor,
-                (ULONG)descValueDataSize, pDescValueBuffer, NULL, BLUETOOTH_GATT_FLAG_NONE);
+                (ULONG)descValueDataSize, pDescValueBuffer, nullptr, BLUETOOTH_GATT_FLAG_NONE);
             if (FAILED(hr)) {
                 spdlog::error("GetDescriptorValue2 failed: {0:x}", hr);
                 //return false;
@@ -347,13 +346,13 @@ bool BLEManager::Impl::init()
     if (currGattChar_->IsNotifiable) {
         spdlog::info("Setting Notification for ServiceHandle {}",
             static_cast<int>(currGattChar_->ServiceHandle));
-        BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
+        BTH_LE_GATT_EVENT_TYPE eventType = CharacteristicValueChangedEvent;
 
-        BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION EventParameterIn;
-        EventParameterIn.Characteristics[0] = *currGattChar_;
-        EventParameterIn.NumCharacteristics = 1;
-        hr = BluetoothGATTRegisterEvent(handle_, EventType, &EventParameterIn,
-            &BLEManager::Impl::event_callback, this, &eventHandle_, BLUETOOTH_GATT_FLAG_NONE);
+        BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION eventParameterIn;
+        eventParameterIn.Characteristics[0] = *currGattChar_;
+        eventParameterIn.NumCharacteristics = 1;
+        hr = BluetoothGATTRegisterEvent(handle_, eventType, &eventParameterIn,
+            &BLEManager::Impl::eventCallback, this, &eventHandle_, BLUETOOTH_GATT_FLAG_NONE);
 
         if (FAILED(hr)) {
             spdlog::error("RegisterEvent failed: {0:x}", hr);
@@ -366,7 +365,7 @@ bool BLEManager::Impl::init()
         // Determine Characteristic Value Buffer Size
         ////////////////////////////////////////////////////////////////////////////
         hr = BluetoothGATTGetCharacteristicValue(
-            handle_, currGattChar_, 0, NULL, &charValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
+            handle_, currGattChar_, 0, nullptr, &charValueDataSize, BLUETOOTH_GATT_FLAG_NONE);
         if (hr != HRESULT_FROM_WIN32(ERROR_MORE_DATA)) {
             spdlog::error("GetCharacteristicValue1 failed: {0:x}", hr);
             //return false;
@@ -379,7 +378,7 @@ bool BLEManager::Impl::init()
         ////////////////////////////////////////////////////////////////////////////
 
         hr = BluetoothGATTGetCharacteristicValue(handle_, currGattChar_, (ULONG)charValueDataSize,
-            pCharValueBuffer, NULL, BLUETOOTH_GATT_FLAG_NONE);
+            pCharValueBuffer, nullptr, BLUETOOTH_GATT_FLAG_NONE);
 
         if (FAILED(hr)) {
             spdlog::error("GetCharacteristicValue2 failed: {0:x}", hr);

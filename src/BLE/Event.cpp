@@ -87,13 +87,9 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<GenericErrorMessage>();
             break;
         case Type::HWNetworkCommands:
-            break;
         case Type::FWUpdateGoIntoBootMode:
-            break;
         case Type::FWUpdateLockMemory:
-            break;
         case Type::FWUpdateLockStatusRequest:
-            break;
         case Type::FWLockStatus:
             break;
         case Type::PortInfoRequest:
@@ -105,20 +101,15 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<PortInputFormatSetupSingle>();
             break;
         case Type::PortInputFormatSetupCombined:
-            break;
         case Type::PortInfo:
-            break;
         case Type::PortModeInfo:
             break;
         case Type::PortValueSingle:
             res = std::make_unique<PortValueSingleMessage>();
             break;
         case Type::PortValueCombined:
-            break;
         case Type::PortInputFormatSingle:
-            break;
         case Type::PortInputFormatCombined:
-            break;
         case Type::VirtualPortSetup:
             break;
         case Type::PortOutputCommand: {
@@ -128,29 +119,17 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             auto scb = buffer[5];
             switch (Utils::to_enum<PortOutputCommandMessage::SubCommand>(scb)) {
                 case PortOutputCommandMessage::SubCommand::StartPower:
-                    break;
                 case PortOutputCommandMessage::SubCommand::SetAccTime:
-                    break;
                 case PortOutputCommandMessage::SubCommand::SetDecTime:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeed:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeed2:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeedForTime:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeedForTime2:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeedForDegrees:
-                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeedForDegrees2:
-                    break;
                 case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition:
-                    break;
                 case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition2:
-                    break;
                 case PortOutputCommandMessage::SubCommand::PresetEncoder:
-                    break;
                 case PortOutputCommandMessage::SubCommand::WriteDirect:
                     break;
                 case PortOutputCommandMessage::SubCommand::WriteDirectModeData:

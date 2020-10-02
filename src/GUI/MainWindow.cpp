@@ -12,11 +12,12 @@
 
 namespace Ancorage::GUI
 {
-LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+LRESULT CALLBACK MainWindow::static_wndProc(
+    HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
     MainWindow* mw = nullptr;
     if (msg == WM_CREATE) {
-        CREATESTRUCT* str = reinterpret_cast<CREATESTRUCT*>(lParam);
+        auto str = reinterpret_cast<CREATESTRUCT*>(lParam);
         mw = reinterpret_cast<MainWindow*>(str->lpCreateParams);
     } else {
         auto d = GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -57,16 +58,16 @@ bool MainWindow::Init()
 {
     wc_.cbSize = sizeof(wc_);
     wc_.style = 0;
-    wc_.lpfnWndProc = &MainWindow::WndProc;
+    wc_.lpfnWndProc = &MainWindow::static_wndProc;
     wc_.cbClsExtra = 0;
     wc_.cbWndExtra = 0;
     wc_.hInstance = inst_;
-    wc_.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc_.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
     wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc_.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wc_.lpszMenuName = MAKEINTRESOURCE(IDR_MAIN_MENU);
     wc_.lpszClassName = className_;
-    wc_.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    wc_.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
 
     if (!RegisterClassEx(&wc_)) {
         Utils::LogError(L"Could not register window class");
@@ -142,6 +143,8 @@ INT_PTR CALLBACK DlgFunc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM)
                 }
             }
         }
+        default:
+            break;
     }
     return FALSE;
 }
@@ -258,6 +261,8 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
             if (wParam <= UINT8_MAX) {
                 profile_->ButtonUp(static_cast<uint8_t>(wParam));
             }
+            break;
+        default:
             break;
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);

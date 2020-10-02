@@ -9,6 +9,7 @@
 #include <xinput.h>
 #include <thread>
 #include <climits>
+#include <array>
 
 namespace Ancorage::XInput
 {
@@ -65,7 +66,7 @@ bool ControllerManager::queryControllers()
                 SendMessage(hwnd_, Utils::enum_value(event), b, 0);
             }
         }
-        const float e = 1e-3f;
+        const float e = 1e-3F;
         auto lx = stickValue(state.Gamepad.sThumbLX);
         auto rx = stickValue(state.Gamepad.sThumbRX);
         auto ly = stickValue(state.Gamepad.sThumbLY);
@@ -73,8 +74,8 @@ bool ControllerManager::queryControllers()
         auto lt = triggerValue(state.Gamepad.bLeftTrigger);
         auto rt = triggerValue(state.Gamepad.bRightTrigger);
         auto compareAssign = [&](float& v1, float v2, GUI::Event event) {
-            if (v2 < -1.0f) {
-                v2 = -1.0f;
+            if (v2 < -1.0F) {
+                v2 = -1.0F;
             }
             if (fabs(v1 - v2) < e) {
                 return;
@@ -106,9 +107,9 @@ float ControllerManager::triggerValue(uint8_t v) const
 
 void ControllerManager::threadProc()
 {
-    XINPUT_STATE states[XUSER_MAX_COUNT];
-    for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
-        ZeroMemory(&states[i], sizeof(XINPUT_STATE));
+    std::array<XINPUT_STATE, XUSER_MAX_COUNT> states{};
+    for (auto& state : states) {
+        ZeroMemory(&state, sizeof(XINPUT_STATE));
     }
     while (running_) {
         if (!queryControllers()) {

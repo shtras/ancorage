@@ -10,7 +10,7 @@ namespace Ancorage::ControlPlus
 class HubHandler
 {
 public:
-    HubHandler(const std::wstring& id, const std::wstring& name);
+    HubHandler(std::wstring id, std::wstring name);
     bool Connect();
     void Disconnect();
 

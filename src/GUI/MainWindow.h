@@ -19,7 +19,8 @@ public:
     HWND GetHwnd();
 
 private:
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+    static LRESULT CALLBACK static_wndProc(
+        HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
     LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
     void threadProc();
     void valueChange(int v, int delta);

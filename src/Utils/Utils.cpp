@@ -3,7 +3,7 @@
 #include "spdlog_wrap.h"
 
 #include <Windows.h>
-#include <assert.h>
+#include <cassert>
 
 #include <fstream>
 
@@ -33,15 +33,15 @@ void LogError(std::wstring&& str)
 
 float FromWparam(uint64_t p)
 {
-    auto res = (p / 1000.0f) - 1.0f;
-    assert(res >= -1.0f && res <= 1.0f);
+    auto res = (p / 1000.0F) - 1.0F;
+    assert(res >= -1.0F && res <= 1.0F);
     return res;
 }
 
 uint64_t FromFloat(float f)
 {
-    assert(f >= -1.0f && f <= 1.0f);
-    return static_cast<uint64_t>((f + 1.0f) * 1000.0f);
+    assert(f >= -1.0F && f <= 1.0F);
+    return static_cast<uint64_t>((f + 1.0F) * 1000.0F);
 }
 
 Semaphore::Semaphore(int count /* = 0*/)

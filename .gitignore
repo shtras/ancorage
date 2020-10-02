@@ -2,3 +2,5 @@ build/
 bin/
 run/
 *.aps
+.vs
+CMakeSettings.json

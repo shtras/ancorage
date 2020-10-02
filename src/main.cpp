@@ -7,7 +7,7 @@
 #include <Windows.h>
 #include <string>
 
-int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int cmdShow)
+int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nShowCmd)
 {
     std::list<std::shared_ptr<spdlog::sinks::sink>> sinks;
 #ifdef RELEASE
@@ -16,7 +16,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     sinks.push_back(dailySink);
 #else
     AllocConsole();
-    FILE* stream = NULL;
+    FILE* stream = nullptr;
     _wfreopen_s(&stream, L"CON", L"w", stdout);
 
     sinks.push_back(
@@ -32,7 +32,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     spdlog::set_level(spdlog::level::debug);
     spdlog::info("Application Started");
 
-    Ancorage::GUI::MainWindow mw(hInst, cmdShow);
+    Ancorage::GUI::MainWindow mw(hInst, nShowCmd);
     mw.Init();
     mw.Run();
     auto mainHwnd = mw.GetHwnd();
