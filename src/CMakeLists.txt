@@ -14,6 +14,6 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${ENGI
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Header Files" FILES ${ENGINE_INCLUDES})
 add_library(Engine ${ENGINE_SOURCES} ${ENGINE_INCLUDES})
 
-target_link_libraries(Engine Xinput)
+target_link_libraries(Engine Xinput SetupAPI BluetoothApis)
 add_executable(Ancorage WIN32 main.cpp ${GUI_RESOURCES} ${GLOBAL_INCLUDES})
 target_link_libraries(Ancorage GUI Engine Threads::Threads)

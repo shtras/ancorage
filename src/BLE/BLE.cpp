@@ -12,8 +12,6 @@
 #include <regstr.h>
 #include <bthdef.h>
 #include <Bluetoothleapis.h>
-#pragma comment(lib, "SetupAPI")
-#pragma comment(lib, "BluetoothApis.lib")
 constexpr char TO_SEARCH_DEVICE_UUID[] = "{00001623-1212-EFDE-1623-785FEABCD123}";
 
 #include <memory>
