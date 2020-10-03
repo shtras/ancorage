@@ -42,3 +42,8 @@ Use the following instruction at your own risk.
 1. In the "Device" menu section find your hub name and select "Connect" (multiple hubs can be connected at the same time)
 1. Click outside the main window and then inside, so that the focus would be on the window and not any of the widgets
 1. Use the keys you defined in the profile to control your model
+
+# Credits
+This project is inspired by https://github.com/imurvai/brickcontroller2  
+Probably the only BLE API example on the internet https://social.msdn.microsoft.com/Forums/en-US/bad452cb-4fc2-4a86-9b60-070b43577cc9/is-there-a-simple-example-desktop-programming-c-for-bluetooth-low-energy-devices?forum=wdk
+LEGO Wireless protocol description https://lego.github.io/lego-ble-wireless-protocol-docs/index.html
