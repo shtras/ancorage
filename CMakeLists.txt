@@ -12,6 +12,8 @@ if (${CMAKE_BUILD_TYPE} MATCHES Debug)
     message("Debug Build")
 elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
     message("Release Build")
+else()
+    message("Unknown Build")
 endif ()
 
 option(ENABLE_TESTS "Enable tests" ON)

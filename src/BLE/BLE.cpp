@@ -269,7 +269,7 @@ bool BLEManager::Impl::init()
     //http://social.msdn.microsoft.com/Forums/en-US/11d3a7ce-182b-4190-bf9d-64fefc3328d9/windows-bluetooth-le-apis-event-callbacks?forum=wdk
     currGattChar_ = new BTH_LE_GATT_CHARACTERISTIC;
     *currGattChar_ = charBuf[0];
-    USHORT charValueDataSize = 0;
+    //USHORT charValueDataSize = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     // Determine Descriptor Buffer Size
@@ -371,7 +371,8 @@ bool BLEManager::Impl::init()
             //return false;
         }
     }
-
+    return true;
+    /*
     if (currGattChar_->IsReadable) { //currGattChar->IsReadable
         ////////////////////////////////////////////////////////////////////////////
         // Determine Characteristic Value Buffer Size
@@ -405,7 +406,7 @@ bool BLEManager::Impl::init()
         }
     }
 
-    return true;
+    return true;*/
 }
 
 void BLEManager::Impl::SendBTMessage(const std::shared_ptr<Message>& m)
