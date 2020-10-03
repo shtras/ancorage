@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HubHandler.h"
+#include "Hub.h"
 
 #include <string>
 #include <map>
@@ -22,6 +22,6 @@ public:
     void ButtonUp(uint8_t b);
 
 private:
-    std::map<std::wstring, std::unique_ptr<HubHandler>> hubs_;
+    std::map<std::wstring, std::unique_ptr<Hub>> hubs_;
 };
 } // namespace Ancorage::ControlPlus

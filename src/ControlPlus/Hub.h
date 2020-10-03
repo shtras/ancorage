@@ -10,10 +10,10 @@
 
 namespace Ancorage::ControlPlus
 {
-class HubHandler : public BLE::Sink
+class Hub : public BLE::Sink
 {
 public:
-    HubHandler();
+    Hub();
 
     bool Parse(const rapidjson::WValue::ConstObject& v);
 

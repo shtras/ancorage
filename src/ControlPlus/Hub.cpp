@@ -1,16 +1,16 @@
-#include "HubHandler.h"
+#include "Hub.h"
 
 #include "BLE/Message.h"
 #include "Utils/Utils.h"
 
 namespace Ancorage::ControlPlus
 {
-HubHandler::HubHandler()
+Hub::Hub()
 {
     ble_->SetSink(this);
 }
 
-bool HubHandler::Parse(const rapidjson::WValue::ConstObject& v)
+bool Hub::Parse(const rapidjson::WValue::ConstObject& v)
 {
     auto idO = Utils::GetT<std::wstring>(v, L"id");
     if (!idO) {
@@ -27,7 +27,7 @@ bool HubHandler::Parse(const rapidjson::WValue::ConstObject& v)
     return true;
 }
 
-bool HubHandler::Connect()
+bool Hub::Connect()
 {
     if (!ble_->Connect(id_)) {
         return false;
@@ -36,12 +36,12 @@ bool HubHandler::Connect()
     return true;
 }
 
-void HubHandler::Disconnect()
+void Hub::Disconnect()
 {
     ble_ = std::make_unique<BLE::BLEManager>();
 }
 
-void HubHandler::Test1()
+void Hub::Test1()
 {
     auto m = std::make_shared<BLE::PortInputFormatSetupSingle>();
     m->portId_ = 1;
@@ -51,7 +51,7 @@ void HubHandler::Test1()
     ble_->SendBTMessage(m);
 }
 
-void HubHandler::Test2()
+void Hub::Test2()
 {
     auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
     m->portId_ = 3;
@@ -63,7 +63,7 @@ void HubHandler::Test2()
     ble_->SendBTMessage(m);
 }
 
-void HubHandler::Motor(uint8_t idx, uint8_t power)
+void Hub::Motor(uint8_t idx, uint8_t power)
 {
     auto m = std::make_shared<BLE::WriteDirectModeDataPortOutputCommandMessage>();
     m->portId_ = idx;
@@ -73,7 +73,7 @@ void HubHandler::Motor(uint8_t idx, uint8_t power)
     ble_->SendBTMessage(m);
 }
 
-void HubHandler::Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power)
+void Hub::Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power)
 {
     auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
     m->portId_ = idx;
@@ -85,12 +85,12 @@ void HubHandler::Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power)
     ble_->SendBTMessage(m);
 }
 
-std::wstring HubHandler::GetName() const
+std::wstring Hub::GetName() const
 {
     return name_;
 }
 
-void HubHandler::Consume(const std::unique_ptr<BLE::Message>& m)
+void Hub::Consume(const std::unique_ptr<BLE::Message>& m)
 {
 }
 } // namespace Ancorage::ControlPlus

@@ -32,7 +32,7 @@ bool Profile::Load(const std::string& fileName)
         if (!hubO) {
             return false;
         }
-        auto hub = std::make_unique<HubHandler>();
+        auto hub = std::make_unique<Hub>();
         if (!hub->Parse(*hubO)) {
             return false;
         }
