@@ -1,0 +1,110 @@
+{
+    "hubs": [
+        {
+            "id": "90842b5480f3#8&207f92e2",
+            "name": "Buggy",
+            "ports": [
+                {
+                    "id": 0,
+                    "type": "motor",
+                    "mappings": [
+                        {
+                            "from": {
+                                "button": "w",
+                                "type": "continuous"
+                            },
+                            "type": "value",
+                            "on_value": 100,
+                            "off_value": 0
+                        },
+                        {
+                            "from": {
+                                "button": "s",
+                                "type": "continuous"
+                            },
+                            "type": "value",
+                            "on_value": -100,
+                            "off_value": 0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "90842b596c22#8&1572164",
+            "name": "Truck",
+            "ports": [
+                {
+                    "id": 0,
+                    "type": "motor",
+                    "mappings": [
+                        {
+                            "from": {
+                                "button": "w",
+                                "type": "continuous"
+                            },
+                            "type": "value",
+                            "on_value": 100,
+                            "off_value": 0
+                        },
+                        {
+                            "from": {
+                                "button": "s",
+                                "type": "continuous"
+                            },
+                            "type": "value",
+                            "on_value": -100,
+                            "off_value": 0
+                        }
+                    ]
+                },
+                {
+                    "id": 1,
+                    "type": "stepper",
+                    "mappings": [
+                        {
+                            "from": {
+                                "button": "+",
+                                "type": "single"
+                            },
+                            "type": "stepForward",
+                            "value": 90
+                        },
+                        {
+                            "from": {
+                                "button": "-",
+                                "type": "single"
+                            },
+                            "type": "stepBackward",
+                            "value": 90
+                        }
+                    ]
+                },
+                {
+                    "id": 3,
+                    "type": "servo",
+                    "mappings": [
+                        {
+                            "from": {
+                                "button": "a",
+                                "type": "continuous"
+                            },
+                            "type": "position",
+                            "on_value": -60,
+                            "off_value": 0
+                        },
+                        {
+                            "from": {
+                                "button": "d",
+                                "type": "continuous"
+                            },
+                            "type": "position",
+                            "on_value": 60,
+                            "off_value": 0
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

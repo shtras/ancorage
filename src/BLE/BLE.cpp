@@ -49,6 +49,7 @@ private:
     mutable std::mutex m_;
     std::list<std::shared_ptr<Message>> messages_;
     Sink* sink_ = nullptr;
+    std::atomic<bool> connected_{false};
 };
 
 BLEManager::Impl::~Impl() = default;
@@ -118,6 +119,7 @@ bool BLEManager::Impl::Connect(const std::wstring& id)
         return false;
     }
     spdlog::info("Connection complete");
+    connected_ = true;
     return true;
 }
 
@@ -408,6 +410,9 @@ bool BLEManager::Impl::init()
 
 void BLEManager::Impl::SendBTMessage(const std::shared_ptr<Message>& m)
 {
+    if (!connected_) {
+        return;
+    }
     if (!running_) {
         spdlog::warn("Can't send message. Stopping...");
         return;
@@ -481,6 +486,7 @@ void BLEManager::Run()
 void BLEManager::Stop()
 {
     impl_->Stop();
+    impl_ = std::make_unique<Impl>();
 }
 
 void BLEManager::SendBTMessage(const std::shared_ptr<Message>& m)

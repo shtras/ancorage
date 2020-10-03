@@ -36,7 +36,7 @@ bool Hub::Parse(const rapidjson::WValue::ConstObject& v)
         if (!portO) {
             return false;
         }
-        auto port = std::make_unique<Port>();
+        auto port = std::make_unique<Port>(ble_.get());
         if (!port->Parse(*portO)) {
             return false;
         }
@@ -56,7 +56,7 @@ bool Hub::Connect()
 
 void Hub::Disconnect()
 {
-    ble_ = std::make_unique<BLE::BLEManager>();
+    ble_->Stop();
 }
 
 void Hub::Test1()
@@ -111,5 +111,19 @@ std::wstring Hub::GetName() const
 void Hub::Consume(const std::unique_ptr<BLE::Message>& m)
 {
     (void)m;
+}
+
+void Hub::ButtonDown(uint8_t b)
+{
+    for (auto& port : ports_) {
+        port.second->ButtonDown(b);
+    }
+}
+
+void Hub::ButtonUp(uint8_t b)
+{
+    for (auto& port : ports_) {
+        port.second->ButtonUp(b);
+    }
 }
 } // namespace Ancorage::ControlPlus

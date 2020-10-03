@@ -18,7 +18,7 @@ bool Profile::Load(const std::string& fileName)
     rapidjson::GenericDocument<rapidjson::UTF16<>> d;
     const rapidjson::ParseResult res = d.Parse(str);
     if (res.IsError()) {
-        Utils::LogError(L"Failed loading profile");
+        spdlog::error(L"Failed loading profile");
         return false;
     }
     auto hubsO = Utils::GetT<rapidjson::WValue::ConstArray>(d, L"hubs");
@@ -71,11 +71,23 @@ void Profile::Disconnect(const std::wstring& id)
 
 void Profile::ButtonDown(uint8_t b)
 {
-    (void)b;
+    if (pressedKeys_.count(b) == 0) {
+        for (auto& hub : hubs_) {
+            hub.second->ButtonDown(b);
+        }
+        pressedKeys_.insert(b);
+    }
 }
 
 void Profile::ButtonUp(uint8_t b)
 {
-    (void)b;
+    if (pressedKeys_.count(b) == 0) {
+        spdlog::error("Releasing unpressed button...");
+        return;
+    }
+    for (auto& hub : hubs_) {
+        hub.second->ButtonUp(b);
+    }
+    pressedKeys_.erase(b);
 }
 } // namespace Ancorage::ControlPlus

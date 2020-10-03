@@ -166,8 +166,10 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
             ShowWindow(controllerDialog_, SW_SHOW);
             auto edit = GetDlgItem(controllerDialog_, IDC_EDIT1);
             SetWindowText(edit, L"Here be status");
-
-            profile_->Load("profile.json");
+            if (!profile_->Load("profile.json")) {
+                Utils::LogError(L"Failed loading profile.json");
+                break;
+            }
             auto hubs = profile_->GetHubs();
             auto menu = GetMenu(hwnd);
             auto deviceMenu = GetSubMenu(menu, 1);
@@ -182,9 +184,6 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
                     reinterpret_cast<UINT_PTR>(subMenu), hub.c_str());
             }
 
-            //auto w = CreateWindowEx(WS_EX_CLIENTEDGE, MAKEINTRESOURCE(IDD_FORMVIEW), L"",
-            //    WS_CHILD | WS_VISIBLE, 0, 0, 100, 100, hwnd, (HMENU)123, GetModuleHandle(NULL),
-            //    NULL);
             break;
         }
         case WM_COMMAND:

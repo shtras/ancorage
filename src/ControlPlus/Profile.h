@@ -6,6 +6,7 @@
 #include <map>
 #include <list>
 #include <memory>
+#include <set>
 
 namespace Ancorage::ControlPlus
 {
@@ -23,5 +24,6 @@ public:
 
 private:
     std::map<std::wstring, std::unique_ptr<Hub>> hubs_;
+    std::set<uint8_t> pressedKeys_;
 };
 } // namespace Ancorage::ControlPlus
