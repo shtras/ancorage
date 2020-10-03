@@ -2,7 +2,8 @@
 
 #include <memory>
 
-#include "Event.h"
+#include "Message.h"
+#include "Sink.h"
 
 namespace Ancorage::BLE
 {
@@ -16,6 +17,7 @@ public:
     void Stop();
 
     void SendBTMessage(const std::shared_ptr<Message>& m);
+    void SetSink(Sink* sink);
 
 private:
     class Impl;

@@ -1,11 +1,11 @@
 #include "BLE.h"
 
-#include "Event.h"
+#include "Message.h"
 #include "Utils/Utils.h"
 
 #include "spdlog_wrap.h"
 
-#include <windows.h>
+#include "Windows_wrap.h"
 #include <setupapi.h>
 #include <devguid.h>
 #include <regstr.h>
@@ -27,6 +27,7 @@ public:
     bool Run();
     void Stop();
     void SendBTMessage(const std::shared_ptr<Message>& m);
+    void SetSink(Sink* sink);
 
 private:
     void threadProc();
@@ -47,6 +48,7 @@ private:
     mutable Utils::Semaphore s_;
     mutable std::mutex m_;
     std::list<std::shared_ptr<Message>> messages_;
+    Sink* sink_ = nullptr;
 };
 
 BLEManager::Impl::~Impl() = default;
@@ -155,6 +157,11 @@ void BLEManager::Impl::Stop()
     }
 }
 
+void BLEManager::Impl::SetSink(Sink* sink)
+{
+    sink_ = sink;
+}
+
 void BLEManager::Impl::onEvent(BTH_LE_GATT_EVENT_TYPE, void* param)
 {
     auto params = (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)param;
@@ -162,6 +169,9 @@ void BLEManager::Impl::onEvent(BTH_LE_GATT_EVENT_TYPE, void* param)
         Message::Parse(params->CharacteristicValue->Data, params->CharacteristicValue->DataSize);
     if (message) {
         spdlog::debug("Received message: {}", message->ToString());
+        if (sink_) {
+            sink_->Consume(message);
+        }
     } else {
         spdlog::error("Error:(");
     }
@@ -476,5 +486,10 @@ void BLEManager::Stop()
 void BLEManager::SendBTMessage(const std::shared_ptr<Message>& m)
 {
     impl_->SendBTMessage(m);
+}
+
+void BLEManager::SetSink(Sink* sink)
+{
+    impl_->SetSink(sink);
 }
 } // namespace Ancorage::BLE

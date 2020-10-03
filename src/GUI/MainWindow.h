@@ -2,7 +2,7 @@
 
 #include "ControlPlus/Profile.h"
 
-#include <Windows.h>
+#include "Windows_wrap.h"
 #include <thread>
 #include <atomic>
 #include <map>

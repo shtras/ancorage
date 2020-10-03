@@ -5,7 +5,7 @@
 
 #include "spdlog_wrap.h"
 
-#include <Windows.h>
+#include "Windows_wrap.h"
 #include <xinput.h>
 #include <thread>
 #include <climits>

@@ -4,7 +4,7 @@
 
 #include "spdlog_wrap.h"
 
-#include <Windows.h>
+#include "Windows_wrap.h"
 #include <string>
 
 int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nShowCmd)

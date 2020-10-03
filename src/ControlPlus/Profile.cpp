@@ -1,7 +1,8 @@
 #include "Profile.h"
 #include "Utils/Utils.h"
 
-#include "rapidjson/document.h"
+#include "spdlog_wrap.h"
+#include "rapidjson_wrap.h"
 
 #include <fstream>
 
@@ -9,22 +10,34 @@ namespace Ancorage::ControlPlus
 {
 bool Profile::Load(const std::string& fileName)
 {
-    std::string str;
+    std::wstring str;
     std::ifstream f(fileName);
     if (f.good()) {
         str = Utils::ReadFile(fileName);
     }
-    rapidjson::Document d;
+    rapidjson::GenericDocument<rapidjson::UTF16<>> d;
     const rapidjson::ParseResult res = d.Parse(str);
     if (res.IsError()) {
         Utils::LogError(L"Failed loading profile");
         return false;
     }
-
-    // Test init here LOL
-
-    hubs_[L"Buggy"] = std::make_unique<HubHandler>(L"90842b5480f3#8&207f92e2", L"Buggy");
-    hubs_[L"Truck"] = std::make_unique<HubHandler>(L"90842b596c22#8&1572164", L"Truck");
+    auto hubsO = Utils::GetT<rapidjson::WValue::ConstArray>(d, L"hubs");
+    if (!hubsO) {
+        spdlog::error("hubs not found");
+        return false;
+    }
+    const auto& hubsArr = *hubsO;
+    for (rapidjson::SizeType i = 0; i < hubsArr.Size(); ++i) {
+        auto hubO = Utils::GetT<rapidjson::WValue::ConstObject>(hubsArr[i]);
+        if (!hubO) {
+            return false;
+        }
+        auto hub = std::make_unique<HubHandler>();
+        if (!hub->Parse(*hubO)) {
+            return false;
+        }
+        hubs_[hub->GetName()] = std::move(hub);
+    }
 
     return true;
 }

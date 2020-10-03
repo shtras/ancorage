@@ -1,16 +1,22 @@
 #pragma once
 
 #include "BLE/BLE.h"
+#include "BLE/Sink.h"
+
+#include "rapidjson_wrap.h"
 
 #include <memory>
 #include <string>
 
 namespace Ancorage::ControlPlus
 {
-class HubHandler
+class HubHandler : public BLE::Sink
 {
 public:
-    HubHandler(std::wstring id, std::wstring name);
+    HubHandler();
+
+    bool Parse(const rapidjson::WValue::ConstObject& v);
+
     bool Connect();
     void Disconnect();
 
@@ -20,6 +26,7 @@ public:
     void Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power);
 
     std::wstring GetName() const;
+    void Consume(const std::unique_ptr<BLE::Message>& m) override;
 
 private:
     std::unique_ptr<BLE::BLEManager> ble_ = std::make_unique<BLE::BLEManager>();

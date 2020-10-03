@@ -1,13 +1,30 @@
 #include "HubHandler.h"
 
-#include "BLE/Event.h"
+#include "BLE/Message.h"
+#include "Utils/Utils.h"
 
 namespace Ancorage::ControlPlus
 {
-HubHandler::HubHandler(std::wstring id, std::wstring name)
-    : id_(std::move(id))
-    , name_(std::move(name))
+HubHandler::HubHandler()
 {
+    ble_->SetSink(this);
+}
+
+bool HubHandler::Parse(const rapidjson::WValue::ConstObject& v)
+{
+    auto idO = Utils::GetT<std::wstring>(v, L"id");
+    if (!idO) {
+        spdlog::error("Missing id");
+        return false;
+    }
+    id_ = *idO;
+    auto nameO = Utils::GetT<std::wstring>(v, L"name");
+    if (!nameO) {
+        spdlog::error("Missing name");
+        return false;
+    }
+    name_ = *nameO;
+    return true;
 }
 
 bool HubHandler::Connect()
@@ -71,5 +88,9 @@ void HubHandler::Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power)
 std::wstring HubHandler::GetName() const
 {
     return name_;
+}
+
+void HubHandler::Consume(const std::unique_ptr<BLE::Message>& m)
+{
 }
 } // namespace Ancorage::ControlPlus

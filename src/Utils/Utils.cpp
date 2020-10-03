@@ -2,26 +2,26 @@
 
 #include "spdlog_wrap.h"
 
-#include <Windows.h>
+#include "Windows_wrap.h"
 #include <cassert>
 
 #include <fstream>
 
 namespace Ancorage::Utils
 {
-std::string ReadFile(const std::string& fileName)
+std::wstring ReadFile(const std::string& fileName)
 {
-    std::ifstream t(fileName);
+    std::wifstream t(fileName);
     if (!t.good()) {
         spdlog::error("Failed to open {}", fileName);
-        return "";
+        return L"";
     }
-    std::string str;
+    std::wstring str;
     t.seekg(0, std::ios::end);
     str.reserve(static_cast<size_t>(t.tellg()));
     t.seekg(0, std::ios::beg);
 
-    str.assign(std::istreambuf_iterator<char>(t), std::istreambuf_iterator<char>());
+    str.assign(std::istreambuf_iterator<wchar_t>(t), std::istreambuf_iterator<wchar_t>());
     return str;
 }
 
