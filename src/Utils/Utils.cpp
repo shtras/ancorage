@@ -9,6 +9,19 @@
 
 namespace Ancorage::Utils
 {
+template <>
+std::optional<uint8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* name)
+{
+    auto v = GetT<int>(o, name);
+    if (!v) {
+        return {};
+    }
+    if (*v < 0 || *v > UINT8_MAX) {
+        return {};
+    }
+    return {static_cast<uint8_t>(*v)};
+}
+
 std::wstring ReadFile(const std::string& fileName)
 {
     std::wifstream t(fileName);
@@ -25,10 +38,10 @@ std::wstring ReadFile(const std::string& fileName)
     return str;
 }
 
-void LogError(std::wstring&& str)
+void LogError(std::wstring&& msg)
 {
-    spdlog::error(str);
-    MessageBox(nullptr, str.c_str(), nullptr, MB_ICONERROR);
+    spdlog::error(msg);
+    MessageBox(nullptr, msg.c_str(), nullptr, MB_ICONERROR);
 }
 
 float FromWparam(uint64_t p)
@@ -62,4 +75,5 @@ void Semaphore::wait()
     cv_.wait(lock, [this]() { return count_ > 0; });
     --count_;
 }
+
 } // namespace Ancorage::Utils

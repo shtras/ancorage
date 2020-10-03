@@ -18,14 +18,15 @@ public:
     uint8_t GetId() const;
     void ButtonDown(uint8_t b);
     void ButtonUp(uint8_t b);
+    void OnConnect();
 
 private:
     struct Action
     {
         enum class Type { Value, Forward, Backward, Absolute, Unknown };
 
-        int value = 0;
-        int zeroValue = 0;
+        uint8_t value = 0;
+        uint8_t zeroValue = 0;
         Type type = Type::Unknown;
     };
 

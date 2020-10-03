@@ -11,15 +11,11 @@ Port::Port(BLE::BLEManager* ble)
 
 bool Port::Parse(const rapidjson::WValue::ConstObject& v)
 {
-    auto idO = Utils::GetT<int>(v, L"id");
+    auto idO = Utils::GetT<uint8_t>(v, L"id");
     if (!idO) {
         return false;
     }
-    if (*idO < 0 || *idO > UINT8_MAX) {
-        spdlog::error("Port ID out of bounds");
-        return false;
-    }
-    id_ = static_cast<uint8_t>(*idO);
+    id_ = *idO;
     auto typeO = Utils::GetT<std::wstring>(v, L"type");
     if (!typeO) {
         return false;
@@ -51,6 +47,7 @@ bool Port::Parse(const rapidjson::WValue::ConstObject& v)
         auto actionTypeO = Utils::GetT<std::wstring>(mapping, L"type");
         if (!actionTypeO) {
             spdlog::error("Missing mapping type");
+            return false;
         }
         const std::wstring& actionType = *actionTypeO;
         if (actionType == L"value") {
@@ -82,7 +79,7 @@ bool Port::Parse(const rapidjson::WValue::ConstObject& v)
             spdlog::error("Incorrect button value");
             return false;
         }
-        uint8_t b = static_cast<uint8_t>(std::toupper(bStr[0]));
+        auto b = static_cast<uint8_t>(std::toupper(bStr[0]));
         auto buttonTypeO = Utils::GetT<std::wstring>(from, L"type");
         if (!buttonTypeO) {
             spdlog::error(L"Missing trigger type");
@@ -90,23 +87,23 @@ bool Port::Parse(const rapidjson::WValue::ConstObject& v)
         }
         const std::wstring& buttonType = *buttonTypeO;
         if (buttonType == L"single") {
-            auto valueO = Utils::GetT<int>(mapping, L"value");
+            auto valueO = Utils::GetT<uint8_t>(mapping, L"value");
             if (!valueO) {
-                spdlog::error(L"Missing value");
+                spdlog::error(L"Missing/incorrect value");
                 return false;
             }
             a.value = *valueO;
             singleActions_[b] = a;
         } else if (buttonType == L"continuous") {
-            auto onValueO = Utils::GetT<int>(mapping, L"on_value");
+            auto onValueO = Utils::GetT<uint8_t>(mapping, L"on_value");
             if (!onValueO) {
-                spdlog::error(L"Missing on_value");
+                spdlog::error(L"Missing/incorrect on_value");
                 return false;
             }
             a.value = *onValueO;
-            auto offValueO = Utils::GetT<int>(mapping, L"off_value");
+            auto offValueO = Utils::GetT<uint8_t>(mapping, L"off_value");
             if (!offValueO) {
-                spdlog::error(L"Missing off_value");
+                spdlog::error(L"Missing/incorrect off_value");
                 return false;
             }
             a.zeroValue = *offValueO;
@@ -160,6 +157,10 @@ void Port::executeAction(const Action& a, bool start)
         m->endState_ = 127;
         ble_->SendBTMessage(m);
     }
+}
+
+void Port::OnConnect()
+{
 }
 
 } // namespace Ancorage::ControlPlus
