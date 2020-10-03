@@ -29,6 +29,9 @@ std::optional<T> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* na
 }
 
 template <>
+std::optional<int8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* name);
+
+template <>
 std::optional<uint8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* name);
 
 template <typename T>

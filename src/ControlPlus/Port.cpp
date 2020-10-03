@@ -79,34 +79,49 @@ bool Port::Parse(const rapidjson::WValue::ConstObject& v)
             spdlog::error("Incorrect button value");
             return false;
         }
-        auto b = static_cast<uint8_t>(std::toupper(bStr[0]));
+        auto b = static_cast<uint8_t>(bStr[0]);
         auto buttonTypeO = Utils::GetT<std::wstring>(from, L"type");
         if (!buttonTypeO) {
             spdlog::error(L"Missing trigger type");
             return false;
         }
         const std::wstring& buttonType = *buttonTypeO;
-        if (buttonType == L"single") {
-            auto valueO = Utils::GetT<uint8_t>(mapping, L"value");
-            if (!valueO) {
-                spdlog::error(L"Missing/incorrect value");
-                return false;
-            }
-            a.value = *valueO;
-            singleActions_[b] = a;
-        } else if (buttonType == L"continuous") {
-            auto onValueO = Utils::GetT<uint8_t>(mapping, L"on_value");
-            if (!onValueO) {
+
+        if (type_ == Type::Motor) {
+            auto onO = Utils::GetT<int8_t>(mapping, L"on_value");
+            if (!onO) {
                 spdlog::error(L"Missing/incorrect on_value");
                 return false;
             }
-            a.value = *onValueO;
-            auto offValueO = Utils::GetT<uint8_t>(mapping, L"off_value");
-            if (!offValueO) {
-                spdlog::error(L"Missing/incorrect off_value");
+            a.value = *onO;
+            if (buttonType == L"continuous") {
+                auto offO = Utils::GetT<int8_t>(mapping, L"off_value");
+                if (!offO) {
+                    spdlog::error(L"Missing/incorrect off_value");
+                    return false;
+                }
+                a.zeroValue = *offO;
+            }
+        } else {
+            auto onO = Utils::GetT<int>(mapping, L"on_value");
+            if (!onO) {
+                spdlog::error(L"Missing/incorrect on_value");
                 return false;
             }
-            a.zeroValue = *offValueO;
+            a.value = *onO;
+            if (buttonType == L"continuous") {
+                auto offO = Utils::GetT<int>(mapping, L"off_value");
+                if (!offO) {
+                    spdlog::error(L"Missing/incorrect off_value");
+                    return false;
+                }
+                a.zeroValue = *offO;
+            }
+        }
+
+        if (buttonType == L"single") {
+            singleActions_[b] = a;
+        } else if (buttonType == L"continuous") {
             continuousActions_[b] = a;
         } else {
             spdlog::error(L"Incorrect trigger type: {}", buttonType);
@@ -145,7 +160,7 @@ void Port::executeAction(const Action& a, bool start)
         m->portId_ = id_;
         m->startupCompletion_ = 0x11;
         m->mode_ = 0;
-        m->payload_.push_back(start ? a.value : a.zeroValue);
+        m->payload_.push_back(static_cast<int8_t>(start ? a.value : a.zeroValue));
         ble_->SendBTMessage(m);
     } else if (a.type == Action::Type::Absolute) {
         auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
@@ -154,7 +169,21 @@ void Port::executeAction(const Action& a, bool start)
         m->pos_ = start ? a.value : a.zeroValue;
         m->speed_ = 60;
         m->power_ = 60;
-        m->endState_ = 127;
+        m->endState_ = 126;
+        ble_->SendBTMessage(m);
+    } else if (a.type == Action::Type::Forward || a.type == Action::Type::Backward) {
+        if (a.type == Action::Type::Forward) {
+            position_ += a.value;
+        } else {
+            position_ -= a.value;
+        }
+        auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
+        m->portId_ = id_;
+        m->startupCompletion_ = 0x11;
+        m->pos_ = position_;
+        m->speed_ = 60;
+        m->power_ = 60;
+        m->endState_ = 126;
         ble_->SendBTMessage(m);
     }
 }

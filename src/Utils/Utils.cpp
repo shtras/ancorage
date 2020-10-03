@@ -10,6 +10,20 @@
 namespace Ancorage::Utils
 {
 template <>
+std::optional<int8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* name)
+{
+    auto v = GetT<int>(o, name);
+    if (!v) {
+        return {};
+    }
+    if (*v < INT8_MIN || *v > INT8_MAX) {
+        spdlog::error("int8_t value out of bounds: {}", *v);
+        return {};
+    }
+    return {static_cast<int8_t>(*v)};
+}
+
+template <>
 std::optional<uint8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar_t* name)
 {
     auto v = GetT<int>(o, name);
@@ -17,6 +31,7 @@ std::optional<uint8_t> GetT(const rapidjson::WValue::ConstObject& o, const wchar
         return {};
     }
     if (*v < 0 || *v > UINT8_MAX) {
+        spdlog::error("uint8_t value out of bounds: {}", *v);
         return {};
     }
     return {static_cast<uint8_t>(*v)};
