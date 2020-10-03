@@ -2,11 +2,13 @@
 
 #include "BLE/BLE.h"
 #include "BLE/Sink.h"
+#include "Port.h"
 
 #include "rapidjson_wrap.h"
 
 #include <memory>
 #include <string>
+#include <map>
 
 namespace Ancorage::ControlPlus
 {
@@ -30,6 +32,7 @@ public:
 
 private:
     std::unique_ptr<BLE::BLEManager> ble_ = std::make_unique<BLE::BLEManager>();
+    std::map<int, std::unique_ptr<Port>> ports_;
     std::wstring id_;
     std::wstring name_;
 };

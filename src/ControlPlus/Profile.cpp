@@ -71,9 +71,11 @@ void Profile::Disconnect(const std::wstring& id)
 
 void Profile::ButtonDown(uint8_t b)
 {
+    (void)b;
 }
 
 void Profile::ButtonUp(uint8_t b)
 {
+    (void)b;
 }
 } // namespace Ancorage::ControlPlus

@@ -24,6 +24,24 @@ bool Hub::Parse(const rapidjson::WValue::ConstObject& v)
         return false;
     }
     name_ = *nameO;
+
+    auto portsO = Utils::GetT<rapidjson::WValue::ConstArray>(v, L"ports");
+    if (!portsO) {
+        spdlog::error("Missing ports");
+        return false;
+    }
+    const auto& portsArr = *portsO;
+    for (rapidjson::SizeType i = 0; i < portsArr.Size(); ++i) {
+        auto portO = Utils::GetT<rapidjson::WValue::ConstObject>(portsArr[i]);
+        if (!portO) {
+            return false;
+        }
+        auto port = std::make_unique<Port>();
+        if (!port->Parse(*portO)) {
+            return false;
+        }
+        ports_[port->GetId()] = std::move(port);
+    }
     return true;
 }
 
@@ -92,5 +110,6 @@ std::wstring Hub::GetName() const
 
 void Hub::Consume(const std::unique_ptr<BLE::Message>& m)
 {
+    (void)m;
 }
 } // namespace Ancorage::ControlPlus
