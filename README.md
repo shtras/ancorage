@@ -1,5 +1,7 @@
-LEGO Control Plus Wireless Protocol v3.0 client  
-Build status: [![Actions Status](https://github.com/shtras/ancorage/workflows/CMake/badge.svg)](https://github.com/shtras/ancorage/actions)
+# Project Ancorage: LEGO Control Plus Wireless Protocol v3.0 client
+
+# Build status
+[![Actions Status](https://github.com/shtras/ancorage/workflows/CMake/badge.svg)](https://github.com/shtras/ancorage/actions)
 
 # Description
 This project allows you to control Lego Control Plus models from your Windows PC that has a bluetooth adapter.  
