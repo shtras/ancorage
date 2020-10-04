@@ -1,12 +1,23 @@
 #include "Port.h"
 
+#include "BLE/MessageFactory.h"
+
 #include "Utils/Utils.h"
+
+#include <thread>
 
 namespace Ancorage::ControlPlus
 {
 Port::Port(BLE::BLEManager* ble)
     : ble_(ble)
 {
+}
+
+Port::~Port()
+{
+    if (connectT_.joinable()) {
+        connectT_.join();
+    }
 }
 
 bool Port::Parse(const rapidjson::WValue::ConstObject& v)
@@ -156,20 +167,12 @@ void Port::ButtonUp(uint8_t b)
 void Port::executeAction(const Action& a, bool start)
 {
     if (a.type == Action::Type::Value) {
-        auto m = std::make_shared<BLE::WriteDirectModeDataPortOutputCommandMessage>();
-        m->portId_ = id_;
-        m->startupCompletion_ = 0x11;
-        m->mode_ = 0;
-        m->payload_.push_back(static_cast<int8_t>(start ? a.value : a.zeroValue));
+        auto m = BLE::MessageFactory::CreateStartSpeedPortOutputCommandMessage(
+            id_, static_cast<int8_t>(start ? a.value : a.zeroValue), 100, start ? 1 : 2);
         ble_->SendBTMessage(m);
     } else if (a.type == Action::Type::Absolute) {
-        auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
-        m->portId_ = id_;
-        m->startupCompletion_ = 0x11;
-        m->pos_ = start ? a.value : a.zeroValue;
-        m->speed_ = 60;
-        m->power_ = 60;
-        m->endState_ = 126;
+        auto m = BLE::MessageFactory::CreateGotoAbsolutePositionPortOutputCommandMessage(
+            id_, start ? a.value : a.zeroValue, 60, 60, 126);
         ble_->SendBTMessage(m);
     } else if (a.type == Action::Type::Forward || a.type == Action::Type::Backward) {
         if (a.type == Action::Type::Forward) {
@@ -177,19 +180,42 @@ void Port::executeAction(const Action& a, bool start)
         } else {
             position_ -= a.value;
         }
-        auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
-        m->portId_ = id_;
-        m->startupCompletion_ = 0x11;
-        m->pos_ = position_;
-        m->speed_ = 60;
-        m->power_ = 60;
-        m->endState_ = 126;
+        auto m = BLE::MessageFactory::CreateGotoAbsolutePositionPortOutputCommandMessage(
+            id_, position_, 60, 60, 126);
         ble_->SendBTMessage(m);
     }
 }
 
-void Port::OnConnect()
+void Port::OnMessage(const std::unique_ptr<BLE::Message>& m)
 {
+    spdlog::debug("Received message on port {}: {}", id_, m->ToString());
+    switch (m->GetType()) {
+        case BLE::Message::Type::HubAttachedIO:
+            onConnect();
+            break;
+        case BLE::Message::Type::PortValueSingle:
+        case BLE::Message::Type::PortInfo:
+            initSem_.notify();
+            break;
+    }
+}
+
+void Port::onConnect()
+{
+    connectT_ = std::thread(&Port::connectProc, this);
+}
+
+void Port::connectProc()
+{
+    ble_->SendBTMessage(BLE::MessageFactory::CreatePortInfoRequestMessage(
+        id_, BLE::PortInfoRequestMessage::InfoType::PortValue));
+    initSem_.wait();
+
+    ble_->SendBTMessage(BLE::MessageFactory::CreatePortInfoRequestMessage(
+        id_, BLE::PortInfoRequestMessage::InfoType::ModeInfo));
+    initSem_.wait();
+
+    spdlog::info("Connection sequence completed");
 }
 
 } // namespace Ancorage::ControlPlus

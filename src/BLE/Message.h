@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <list>
 #include <memory>
 #include <sstream>
 
@@ -8,6 +9,8 @@ namespace Ancorage::BLE
 {
 class Message
 {
+    friend class MessageFactory;
+
 public:
     enum class Type : uint32_t {
         HubProperties = 0x01,
@@ -42,6 +45,8 @@ public:
     static bool IsType(uint8_t b);
     std::string ToString() const;
     std::vector<uint8_t> ToBuffer() const;
+    const std::list<uint8_t>& GetPorts() const;
+    Type GetType() const;
 
 protected:
     bool parse(uint8_t* buffer, size_t size);
@@ -55,10 +60,13 @@ protected:
     uint16_t size_ = 0;
     Type type_ = Type::Unknown;
     std::vector<uint8_t> buffer_;
+    std::list<uint8_t> portIds_;
 };
 
 class HubActionsMessage : public Message
 {
+    friend class MessageFactory;
+
 public:
     enum class ActionType {
         SwitchOff = 0x01,
@@ -75,7 +83,7 @@ public:
     };
     HubActionsMessage();
 
-public:
+private:
     bool parseBody(size_t& itr) override;
     void toString(std::stringstream& ss) const override;
     void toBuffer(std::vector<uint8_t>& buf) const override;
@@ -153,6 +161,7 @@ class PortInputFormatSetupSingle : public Message
 public:
     PortInputFormatSetupSingle();
 
+private:
     bool parseBody(size_t& itr) override;
     void toString(std::stringstream& ss) const override;
     void toBuffer(std::vector<uint8_t>& buf) const override;
@@ -165,6 +174,8 @@ public:
 
 class PortInfoRequestMessage : public Message
 {
+    friend class MessageFactory;
+
 public:
     enum class InfoType : uint8_t {
         PortValue = 0x00,
@@ -175,12 +186,31 @@ public:
 
     PortInfoRequestMessage();
 
+private:
     bool parseBody(size_t& itr) override;
     void toString(std::stringstream& ss) const override;
     void toBuffer(std::vector<uint8_t>& buf) const override;
 
     uint8_t portId_ = UINT8_MAX;
     InfoType infoType_ = InfoType::Unknown;
+};
+
+class PortInfoMessage : public Message
+{
+public:
+    PortInfoMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    PortInfoRequestMessage::InfoType infoType_ = PortInfoRequestMessage::InfoType::Unknown;
+    uint8_t capabilities_ = UINT8_MAX;
+    uint8_t totalModeCount_ = UINT8_MAX;
+    uint16_t inputModes_ = UINT16_MAX;
+    uint16_t outputModes_ = UINT16_MAX;
+    uint8_t modeCombinations_ = UINT8_MAX;
 };
 
 class PortValueSingleMessage : public Message
@@ -198,6 +228,8 @@ private:
 
 class PortOutputCommandMessage : public Message
 {
+    friend class MessageFactory;
+
 public:
     enum class SubCommand {
         StartPower = 0x02,
@@ -218,7 +250,7 @@ public:
     };
     PortOutputCommandMessage();
 
-public:
+protected:
     bool parseBody(size_t& itr) override;
     void toString(std::stringstream& ss) const override;
     virtual bool parseSubCommand(size_t& itr) = 0;
@@ -229,12 +261,31 @@ public:
     SubCommand subCommand_ = SubCommand::Unknown;
 };
 
+class StartSpeedPortOutputCommandMessage : public PortOutputCommandMessage
+{
+    friend class MessageFactory;
+
+public:
+    StartSpeedPortOutputCommandMessage();
+
+private:
+    void toString(std::stringstream& ss) const override;
+    bool parseSubCommand(size_t& itr) override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    int8_t speed_ = 0;
+    int8_t maxPower_ = 0;
+    int8_t useProfile_ = 0;
+};
+
 class GotoAbsolutePositionPortOutputCommandMessage : public PortOutputCommandMessage
 {
+    friend class MessageFactory;
+
 public:
     GotoAbsolutePositionPortOutputCommandMessage();
 
-public:
+private:
     void toString(std::stringstream& ss) const override;
     bool parseSubCommand(size_t& itr) override;
     void toBuffer(std::vector<uint8_t>& buf) const override;
@@ -243,20 +294,6 @@ public:
     int8_t speed_ = 0;
     int8_t power_ = 0;
     int8_t endState_ = 0;
-};
-
-class WriteDirectModeDataPortOutputCommandMessage : public PortOutputCommandMessage
-{
-public:
-    WriteDirectModeDataPortOutputCommandMessage();
-
-public:
-    void toString(std::stringstream& ss) const override;
-    bool parseSubCommand(size_t& itr) override;
-    void toBuffer(std::vector<uint8_t>& buf) const override;
-
-    uint8_t mode_ = 0xff;
-    std::vector<uint8_t> payload_;
 };
 
 class PortOutputCommandFeedbackMessage : public Message
@@ -268,6 +305,7 @@ public:
         CommandDiscarded = 0x04,
         Idle = 0x08,
         BusyFull = 0x10,
+        BufferEmptyCompleteIdle = 0x0a, // Not explicitly in the spec. Bitwise or.
         Unknown = 0xff
     };
     PortOutputCommandFeedbackMessage();

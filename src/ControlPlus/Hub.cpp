@@ -51,9 +51,6 @@ bool Hub::Connect()
         return false;
     }
     ble_->Run();
-    for (auto& port : ports_) {
-        port.second->OnConnect();
-    }
     return true;
 }
 
@@ -63,17 +60,17 @@ void Hub::Disconnect()
 }
 
 void Hub::Test1()
-{
+{ /*
     auto m = std::make_shared<BLE::PortInputFormatSetupSingle>();
     m->portId_ = 1;
     m->mode_ = 0;
     m->deltaInterval_ = 5;
     m->notificationEnabled_ = true;
-    ble_->SendBTMessage(m);
+    ble_->SendBTMessage(m);*/
 }
 
 void Hub::Test2()
-{
+{ /*
     auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
     m->portId_ = 3;
     m->startupCompletion_ = 0x11;
@@ -81,29 +78,7 @@ void Hub::Test2()
     m->speed_ = 60;
     m->power_ = 60;
     m->endState_ = 127;
-    ble_->SendBTMessage(m);
-}
-
-void Hub::Motor(uint8_t idx, uint8_t power)
-{
-    auto m = std::make_shared<BLE::WriteDirectModeDataPortOutputCommandMessage>();
-    m->portId_ = idx;
-    m->startupCompletion_ = 0x11;
-    m->mode_ = 0;
-    m->payload_.push_back(power);
-    ble_->SendBTMessage(m);
-}
-
-void Hub::Servo(uint8_t idx, int32_t pos, int8_t speed, int8_t power)
-{
-    auto m = std::make_shared<BLE::GotoAbsolutePositionPortOutputCommandMessage>();
-    m->portId_ = idx;
-    m->startupCompletion_ = 0x11;
-    m->pos_ = pos;
-    m->speed_ = speed;
-    m->power_ = power;
-    m->endState_ = 127;
-    ble_->SendBTMessage(m);
+    ble_->SendBTMessage(m);*/
 }
 
 std::wstring Hub::GetName() const
@@ -113,7 +88,12 @@ std::wstring Hub::GetName() const
 
 void Hub::Consume(const std::unique_ptr<BLE::Message>& m)
 {
-    (void)m;
+    const auto& ports = m->GetPorts();
+    for (auto p : ports) {
+        if (ports_.count(p) > 0) {
+            ports_.at(p)->OnMessage(m);
+        }
+    }
 }
 
 void Hub::ButtonDown(uint8_t b)

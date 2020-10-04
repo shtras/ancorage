@@ -31,7 +31,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ in
     spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::debug);
     spdlog::info("Application Started");
-
     Ancorage::GUI::MainWindow mw(hInst, nShowCmd);
     mw.Init();
     mw.Run();

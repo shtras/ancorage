@@ -177,11 +177,17 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
             for (const auto& hub : hubs) {
                 auto subMenu = CreatePopupMenu();
                 bool res = AppendMenu(subMenu, MF_STRING, menuId, L"&Connect");
+                assert(res);
                 connectEvents_[menuId++] = hub;
                 res = AppendMenu(subMenu, MF_STRING, menuId, L"&Disconnect");
+                assert(res);
                 disconnectEvents_[menuId++] = hub;
+                res = AppendMenu(subMenu, MF_STRING, menuId, L"&Test1");
+                assert(res);
+                testEvents_[menuId++] = hub;
                 res = AppendMenu(deviceMenu, MF_STRING | MF_POPUP,
                     reinterpret_cast<UINT_PTR>(subMenu), hub.c_str());
+                assert(res);
             }
 
             break;
@@ -190,12 +196,6 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
             switch (LOWORD(wParam)) {
                 case ID_FILE_EXIT:
                     PostMessage(hwnd, WM_CLOSE, 0, 0);
-                    break;
-                case ID_DEVICE_TEST1:
-                    //hub_->Test1();
-                    break;
-                case ID_DEVICE_TEST2:
-                    //hub_->Test2();
                     break;
                 case ID_HELP_ABOUT:
                     DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_DIALOGBAR), hwnd,
@@ -206,6 +206,8 @@ LRESULT MainWindow::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) n
                         profile_->Connect(connectEvents_.at(wParam));
                     } else if (disconnectEvents_.count(wParam) > 0) {
                         profile_->Disconnect(disconnectEvents_.at(wParam));
+                    } else if (testEvents_.count(wParam) > 0) {
+                        profile_->Test1(testEvents_.at(wParam));
                     }
                 } break;
             }

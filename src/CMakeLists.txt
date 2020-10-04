@@ -11,6 +11,7 @@ add_library(GUI ${GUI_SOURCES} ${GUI_INCLUDES})
 set(ENGINE_SOURCES 
 	"BLE/BLE.cpp" 
 	"BLE/Message.cpp" 
+	"BLE/MessageFactory.cpp"
 	"XInput/XInputTest.cpp" 
 	"Utils/Utils.cpp" 
 	"ControlPlus/Profile.cpp" 
@@ -21,6 +22,7 @@ set(ENGINE_INCLUDES
 	"BLE/BLE.h" 
 	"BLE/EventNames.h" 
 	"BLE/Message.h" 
+	"BLE/MessageFactory.h"
 	"XInput/XInputTest.h" 
 	"Utils/Utils.h" 
 	"ControlPlus/Profile.h" 

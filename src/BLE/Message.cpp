@@ -101,7 +101,10 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<PortInputFormatSetupSingle>();
             break;
         case Type::PortInputFormatSetupCombined:
+            break;
         case Type::PortInfo:
+            res = std::make_unique<PortInfoMessage>();
+            break;
         case Type::PortModeInfo:
             break;
         case Type::PortValueSingle:
@@ -121,7 +124,10 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
                 case PortOutputCommandMessage::SubCommand::StartPower:
                 case PortOutputCommandMessage::SubCommand::SetAccTime:
                 case PortOutputCommandMessage::SubCommand::SetDecTime:
+                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeed:
+                    res = std::make_unique<StartSpeedPortOutputCommandMessage>();
+                    break;
                 case PortOutputCommandMessage::SubCommand::StartSpeed2:
                 case PortOutputCommandMessage::SubCommand::StartSpeedForTime:
                 case PortOutputCommandMessage::SubCommand::StartSpeedForTime2:
@@ -131,9 +137,7 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
                 case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition2:
                 case PortOutputCommandMessage::SubCommand::PresetEncoder:
                 case PortOutputCommandMessage::SubCommand::WriteDirect:
-                    break;
                 case PortOutputCommandMessage::SubCommand::WriteDirectModeData:
-                    res = std::make_unique<WriteDirectModeDataPortOutputCommandMessage>();
                     break;
             }
         } break;
@@ -172,6 +176,16 @@ std::vector<uint8_t> Message::ToBuffer() const
     // @TODO: Handle longer messages
     res[0] = static_cast<uint8_t>(res.size());
     return res;
+}
+
+const std::list<uint8_t>& Message::GetPorts() const
+{
+    return portIds_;
+}
+
+Message::Type Message::GetType() const
+{
+    return type_;
 }
 
 bool Message::parse(uint8_t* buffer, size_t size)
@@ -260,6 +274,7 @@ HubAttachedIOMessage::HubAttachedIOMessage()
 bool HubAttachedIOMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
     event_ = Utils::to_enum<Event>(buffer_[itr++]);
     if (event_ == Event::AttachedIO || event_ == Event::AttachedVirtualIO) {
         uint16_t typeId = Get16(buffer_, itr);
@@ -302,6 +317,7 @@ PortInputFormatSetupSingle::PortInputFormatSetupSingle()
 bool PortInputFormatSetupSingle::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
     mode_ = buffer_[itr++];
     deltaInterval_ = Get32(buffer_, itr);
     notificationEnabled_ = buffer_[itr++];
@@ -333,6 +349,7 @@ PortInfoRequestMessage::PortInfoRequestMessage()
 bool PortInfoRequestMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
     infoType_ = Utils::to_enum<InfoType>(buffer_[itr++]);
     return true;
 }
@@ -350,6 +367,46 @@ void PortInfoRequestMessage::toBuffer(std::vector<uint8_t>& buf) const
     buf.push_back(Utils::enum_value(infoType_));
 }
 
+PortInfoMessage::PortInfoMessage()
+{
+    type_ = Type::PortInfo;
+}
+
+bool PortInfoMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
+    infoType_ = Utils::to_enum<PortInfoRequestMessage::InfoType>(buffer_[itr++]);
+    if (infoType_ == PortInfoRequestMessage::InfoType::ModeInfo) {
+        capabilities_ = buffer_[itr++];
+        totalModeCount_ = buffer_[itr++];
+        inputModes_ = Get16(buffer_, itr);
+        outputModes_ = Get16(buffer_, itr);
+    } else if (infoType_ == PortInfoRequestMessage::InfoType::PossibleCombinations) {
+        modeCombinations_ = buffer_[itr++];
+    } else {
+        spdlog::error("Unknown info type: {}", infoType_);
+        return false;
+    }
+    return true;
+}
+
+void PortInfoMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId_) << std::endl
+       << "\tInfo Type: " << EnumName(infoType_);
+    if (infoType_ == PortInfoRequestMessage::InfoType::ModeInfo) {
+        ss << std::endl
+           << "\tCapabilities: " << static_cast<int>(capabilities_) << std::endl
+           << "\tTotal Mode Count: " << static_cast<int>(totalModeCount_) << std::endl
+           << "\tInput Modes: " << static_cast<int>(inputModes_) << std::endl
+           << "\tOutput Modes: " << static_cast<int>(outputModes_);
+    } else if (infoType_ == PortInfoRequestMessage::InfoType::PossibleCombinations) {
+        ss << std::endl << "\tMode Combinations: " << static_cast<int>(modeCombinations_);
+    }
+}
+
 PortValueSingleMessage::PortValueSingleMessage()
 {
     type_ = Type::PortValueSingle;
@@ -358,6 +415,7 @@ PortValueSingleMessage::PortValueSingleMessage()
 bool PortValueSingleMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
     if (size_ == 5) {
         value_ = buffer_[itr++];
     } else if (size_ == 6) {
@@ -385,6 +443,7 @@ PortOutputCommandMessage::PortOutputCommandMessage()
 bool PortOutputCommandMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
     startupCompletion_ = buffer_[itr++];
     if (!parseSubCommand(itr)) {
         return false;
@@ -405,6 +464,36 @@ void PortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
     buf.push_back(portId_);
     buf.push_back(startupCompletion_);
     buf.push_back(static_cast<uint8_t>(Utils::enum_value(subCommand_)));
+}
+
+StartSpeedPortOutputCommandMessage::StartSpeedPortOutputCommandMessage()
+{
+    subCommand_ = SubCommand::StartSpeed;
+}
+
+void StartSpeedPortOutputCommandMessage::toString(std::stringstream& ss) const
+{
+    PortOutputCommandMessage::toString(ss);
+    ss << std::endl
+       << "\tSpeed: " << static_cast<int>(speed_) << std::endl
+       << "\tMaxPower: " << static_cast<int>(maxPower_) << std::endl
+       << "\tUseProfile: " << static_cast<int>(useProfile_);
+}
+
+bool StartSpeedPortOutputCommandMessage::parseSubCommand(size_t& itr)
+{
+    speed_ = buffer_[itr++];
+    maxPower_ = buffer_[itr++];
+    useProfile_ = buffer_[itr++];
+    return true;
+}
+
+void StartSpeedPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    PortOutputCommandMessage::toBuffer(buf);
+    buf.push_back(speed_);
+    buf.push_back(maxPower_);
+    buf.push_back(useProfile_);
 }
 
 GotoAbsolutePositionPortOutputCommandMessage::GotoAbsolutePositionPortOutputCommandMessage()
@@ -441,33 +530,6 @@ void GotoAbsolutePositionPortOutputCommandMessage::toBuffer(std::vector<uint8_t>
     buf.push_back(0);
 }
 
-WriteDirectModeDataPortOutputCommandMessage::WriteDirectModeDataPortOutputCommandMessage()
-{
-    subCommand_ = SubCommand::WriteDirectModeData;
-}
-
-void WriteDirectModeDataPortOutputCommandMessage::toString(std::stringstream& ss) const
-{
-    PortOutputCommandMessage::toString(ss);
-    ss << std::endl << "\tMode: " << static_cast<int>(mode_);
-}
-
-bool WriteDirectModeDataPortOutputCommandMessage::parseSubCommand(size_t& itr)
-{
-    mode_ = buffer_[itr++];
-    while (itr < size_) {
-        payload_.push_back(buffer_[itr++]);
-    }
-    return true;
-}
-
-void WriteDirectModeDataPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
-{
-    PortOutputCommandMessage::toBuffer(buf);
-    buf.push_back(mode_);
-    buf.insert(buf.end(), payload_.begin(), payload_.end());
-}
-
 PortOutputCommandFeedbackMessage::PortOutputCommandFeedbackMessage()
 {
     type_ = Type::PortOutputCommandFeedback;
@@ -476,13 +538,16 @@ PortOutputCommandFeedbackMessage::PortOutputCommandFeedbackMessage()
 bool PortOutputCommandFeedbackMessage::parseBody(size_t& itr)
 {
     portId1_ = buffer_[itr++];
+    portIds_.push_back(portId1_);
     message1_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
     if (itr < size_) {
         portId2_ = buffer_[itr++];
+        portIds_.push_back(portId2_);
         message2_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
     }
     if (itr < size_) {
         portId3_ = buffer_[itr++];
+        portIds_.push_back(portId3_);
         message3_ = Utils::to_enum<FeedbackMessage>(buffer_[itr++]);
     }
     return true;

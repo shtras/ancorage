@@ -1,6 +1,7 @@
 #include "BLE.h"
 
 #include "Message.h"
+#include "MessageFactory.h"
 #include "Utils/Utils.h"
 
 #include "spdlog_wrap.h"
@@ -42,7 +43,7 @@ private:
     std::wstring id_;
     HANDLE handle_ = nullptr;
     std::thread t_;
-    std::atomic<bool> running_{true};
+    std::atomic<bool> running_{false};
     PBTH_LE_GATT_CHARACTERISTIC currGattChar_ = nullptr;
     BLUETOOTH_GATT_EVENT_HANDLE eventHandle_ = nullptr;
     mutable Utils::Semaphore s_;
@@ -131,6 +132,7 @@ bool BLEManager::Impl::Run()
         return false;
     }
     spdlog::info("Init complete");
+    running_ = true;
     t_ = std::thread(&BLEManager::Impl::threadProc, this);
     return true;
 }
@@ -146,11 +148,8 @@ void BLEManager::Impl::Stop()
 
         BluetoothGATTUnregisterEvent(eventHandle_, BLUETOOTH_GATT_FLAG_NONE);
 
-        auto disconnectM = std::make_shared<HubActionsMessage>();
-        disconnectM->actionType_ = HubActionsMessage::ActionType::Disconnect;
-        //messages_.push_back(disconnectM);
-        auto shutdownM = std::make_shared<HubActionsMessage>();
-        shutdownM->actionType_ = HubActionsMessage::ActionType::SwitchOff;
+        auto shutdownM =
+            MessageFactory::CreateHubActionsMessage(HubActionsMessage::ActionType::SwitchOff);
         messages_.push_back(shutdownM);
     }
     s_.notify();
@@ -170,7 +169,7 @@ void BLEManager::Impl::onEvent(BTH_LE_GATT_EVENT_TYPE, void* param)
     auto message =
         Message::Parse(params->CharacteristicValue->Data, params->CharacteristicValue->DataSize);
     if (message) {
-        spdlog::debug("Received message: {}", message->ToString());
+        //spdlog::debug("Received message: {}", message->ToString());
         if (sink_) {
             sink_->Consume(message);
         }

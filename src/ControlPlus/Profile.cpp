@@ -60,6 +60,15 @@ void Profile::Connect(const std::wstring& id)
     hubs_.at(id)->Connect();
 }
 
+void Profile::Test1(const std::wstring& id)
+{
+    if (hubs_.count(id) == 0) {
+        Utils::LogError(L"Hub not found");
+        return;
+    }
+    hubs_.at(id)->Test1();
+}
+
 void Profile::Disconnect(const std::wstring& id)
 {
     if (hubs_.count(id) == 0) {

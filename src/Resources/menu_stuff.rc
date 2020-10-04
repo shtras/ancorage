@@ -58,8 +58,7 @@ BEGIN
     END
     POPUP "Device"
     BEGIN
-        MENUITEM "Test1",                       ID_DEVICE_TEST1
-        MENUITEM "Test2",                       ID_DEVICE_TEST2
+        MENUITEM "Dummy",                       ID_DEVICE_DUMMY
     END
     POPUP "Help"
     BEGIN

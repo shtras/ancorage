@@ -40,5 +40,6 @@ private:
     int gear_ = 0;
     std::map<WPARAM, std::wstring> connectEvents_;
     std::map<WPARAM, std::wstring> disconnectEvents_;
+    std::map<WPARAM, std::wstring> testEvents_;
 };
 } // namespace Ancorage::GUI

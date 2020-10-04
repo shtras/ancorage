@@ -21,7 +21,7 @@ Heavy WiP. Will not work. Don't try this at home. Under construction.
 - [ ] Profile support for controller bindings
 - [x] Multi hub support
 - [x] Configurable JSON profile
-- [ ] Multiple motors in profile (bindings for pairs of motors working in a asynchronized way)
+- [ ] Multiple motors in profile (bindings for pairs of motors working in a synchronized way)
 - [ ] Receiving feedback messages from hubs (servo/stepper position, etc.)
 - [ ] Synchronized motor mode (motors working in pairs)
 - [ ] UI rework from scratch

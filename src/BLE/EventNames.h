@@ -242,16 +242,19 @@ constexpr std::string_view EnumName(PortOutputCommandFeedbackMessage::FeedbackMe
         case PortOutputCommandFeedbackMessage::FeedbackMessage::BufferEmptyInProgress:
             return "Buffer Empty + Command In Progress";
         case PortOutputCommandFeedbackMessage::FeedbackMessage::BufferEmptyComplete:
-            return "Buffer Empty + Command Completed";
+            return "Empty/Completed";
         case PortOutputCommandFeedbackMessage::FeedbackMessage::CommandDiscarded:
             return "Current Command(s) Discarded";
         case PortOutputCommandFeedbackMessage::FeedbackMessage::Idle:
             return "Idle";
         case PortOutputCommandFeedbackMessage::FeedbackMessage::BusyFull:
             return "Busy/Full";
+        case PortOutputCommandFeedbackMessage::FeedbackMessage::BufferEmptyCompleteIdle:
+            return "Empty/Complete/Idle";
         case PortOutputCommandFeedbackMessage::FeedbackMessage::Unknown:
             return "Unknown";
     }
     return "N/A";
 }
+
 } // namespace Ancorage::BLE

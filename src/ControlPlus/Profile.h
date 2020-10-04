@@ -18,6 +18,7 @@ public:
 
     void Connect(const std::wstring& id);
     void Disconnect(const std::wstring& id);
+    void Test1(const std::wstring& id);
 
     void ButtonDown(uint8_t b);
     void ButtonUp(uint8_t b);
