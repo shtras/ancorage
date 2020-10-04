@@ -57,6 +57,7 @@ bool Hub::Connect()
 void Hub::Disconnect()
 {
     ble_->Stop();
+    ble_->SetSink(this);
 }
 
 void Hub::Test1()

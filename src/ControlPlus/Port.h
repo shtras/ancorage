@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <map>
+#include <atomic>
 
 namespace Ancorage::ControlPlus
 {
@@ -46,5 +47,7 @@ private:
     std::map<uint8_t, Action> singleActions_;
     Utils::Semaphore initSem_;
     std::thread connectT_;
+    uint8_t numModes_ = 0;
+    std::atomic<bool> initialized_{false};
 };
 } // namespace Ancorage::ControlPlus

@@ -8,12 +8,33 @@ std::shared_ptr<Message> MessageFactory::CreateHubActionsMessage(HubActionsMessa
     return m;
 }
 
+std::shared_ptr<Message> MessageFactory::CreatePortModeInfoRequestMessage(
+    uint8_t portId, uint8_t mode, PortModeInfoRequestMessage::InfoType type)
+{
+    auto m = std::make_shared<PortModeInfoRequestMessage>();
+    m->portId_ = portId;
+    m->mode_ = mode;
+    m->infoType_ = type;
+    return m;
+}
+
 std::shared_ptr<Message> MessageFactory::CreatePortInfoRequestMessage(
     uint8_t portId, PortInfoRequestMessage::InfoType type)
 {
     auto m = std::make_shared<PortInfoRequestMessage>();
     m->portId_ = portId;
     m->infoType_ = type;
+    return m;
+}
+
+std::shared_ptr<Message> MessageFactory::CreatePortInputFormatSetupSingleMessage(
+    uint8_t portId, uint8_t mode, uint32_t deltaInterval, bool notify)
+{
+    auto m = std::make_shared<PortInputFormatSetupSingleMessage>();
+    m->portId_ = portId;
+    m->mode_ = mode;
+    m->deltaInterval_ = deltaInterval;
+    m->notificationEnabled_ = notify;
     return m;
 }
 

@@ -197,6 +197,34 @@ constexpr std::string_view EnumName(PortInfoRequestMessage::InfoType t)
 }
 
 template <>
+constexpr std::string_view EnumName(PortModeInfoRequestMessage::InfoType t)
+{
+    switch (t) {
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Name:
+            return "Name of the mode";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Raw:
+            return "The raw rande";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Pct:
+            return "The percent range";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Si:
+            return "The SI value range";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Symbol:
+            return "The standard name of value";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Mapping:
+            return "Mapping";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::MotorBias:
+            return "Motor Bias";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Capability:
+            return "Capability Bits";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::ValueFormat:
+            return "Value encoding";
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Unknown:
+            return "Unknown";
+    }
+    return "N/A";
+}
+
+template <>
 constexpr std::string_view EnumName(PortOutputCommandMessage::SubCommand t)
 {
     switch (t) {

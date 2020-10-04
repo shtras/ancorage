@@ -96,9 +96,10 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<PortInfoRequestMessage>();
             break;
         case Type::PortModeInfoRequest:
+            res = std::make_unique<PortModeInfoRequestMessage>();
             break;
         case Type::PortInputFormatSetupSingle:
-            res = std::make_unique<PortInputFormatSetupSingle>();
+            res = std::make_unique<PortInputFormatSetupSingleMessage>();
             break;
         case Type::PortInputFormatSetupCombined:
             break;
@@ -106,6 +107,7 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<PortInfoMessage>();
             break;
         case Type::PortModeInfo:
+            res = std::make_unique<PortModeInfoMessage>();
             break;
         case Type::PortValueSingle:
             res = std::make_unique<PortValueSingleMessage>();
@@ -168,6 +170,7 @@ std::string Message::ToString() const
 std::vector<uint8_t> Message::ToBuffer() const
 {
     std::vector<uint8_t> res;
+    res.reserve(16);
     res.push_back(0); // size
     res.push_back(0); // reserved hub id
     res.push_back(static_cast<uint8_t>(Utils::enum_value(type_)));
@@ -271,6 +274,11 @@ HubAttachedIOMessage::HubAttachedIOMessage()
     type_ = Message::Type::HubAttachedIO;
 }
 
+HubAttachedIOMessage::Event HubAttachedIOMessage::GetEvent() const
+{
+    return event_;
+}
+
 bool HubAttachedIOMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
@@ -280,7 +288,7 @@ bool HubAttachedIOMessage::parseBody(size_t& itr)
         uint16_t typeId = Get16(buffer_, itr);
         ioTypeId_ = Utils::to_enum<IOTypeID>(typeId);
     }
-    if (event_ == Event::AttachedIO || event_ == Event::DetachedIO) {
+    if (event_ == Event::AttachedIO) {
         hardwareRev_ = Get32(buffer_, itr);
         softwareRev_ = Get32(buffer_, itr);
     }
@@ -297,7 +305,9 @@ void HubAttachedIOMessage::toString(std::stringstream& ss) const
        << "\tPort: " << static_cast<int>(portId_) << std::endl
        << "\tEvent: " << EnumName(event_);
     if (event_ == Event::AttachedIO || event_ == Event::AttachedVirtualIO) {
-        ss << std::endl << "\tIO type: " << EnumName(ioTypeId_);
+        ss << std::endl
+           << "\tIO type: " << static_cast<int>(Utils::enum_value(ioTypeId_)) << " "
+           << EnumName(ioTypeId_);
     }
     if (event_ == Event::AttachedIO) {
         ss << std::endl
@@ -309,12 +319,12 @@ void HubAttachedIOMessage::toString(std::stringstream& ss) const
     }
 }
 
-PortInputFormatSetupSingle::PortInputFormatSetupSingle()
+PortInputFormatSetupSingleMessage::PortInputFormatSetupSingleMessage()
 {
     type_ = Type::PortInputFormatSetupSingle;
 }
 
-bool PortInputFormatSetupSingle::parseBody(size_t& itr)
+bool PortInputFormatSetupSingleMessage::parseBody(size_t& itr)
 {
     portId_ = buffer_[itr++];
     portIds_.push_back(portId_);
@@ -324,7 +334,7 @@ bool PortInputFormatSetupSingle::parseBody(size_t& itr)
     return true;
 }
 
-void PortInputFormatSetupSingle::toString(std::stringstream& ss) const
+void PortInputFormatSetupSingleMessage::toString(std::stringstream& ss) const
 {
     ss << std::endl
        << "\tPort ID: " << static_cast<int>(portId_) << std::endl
@@ -333,7 +343,7 @@ void PortInputFormatSetupSingle::toString(std::stringstream& ss) const
        << "\tNotification Enabled: " << notificationEnabled_;
 }
 
-void PortInputFormatSetupSingle::toBuffer(std::vector<uint8_t>& buf) const
+void PortInputFormatSetupSingleMessage::toBuffer(std::vector<uint8_t>& buf) const
 {
     buf.push_back(portId_);
     buf.push_back(mode_);
@@ -367,9 +377,43 @@ void PortInfoRequestMessage::toBuffer(std::vector<uint8_t>& buf) const
     buf.push_back(Utils::enum_value(infoType_));
 }
 
+PortModeInfoRequestMessage::PortModeInfoRequestMessage()
+{
+    type_ = Type::PortModeInfoRequest;
+}
+
+bool PortModeInfoRequestMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
+    mode_ = buffer_[itr++];
+    infoType_ = Utils::to_enum<PortModeInfoRequestMessage::InfoType>(buffer_[itr++]);
+    return true;
+}
+
+void PortModeInfoRequestMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort: " << static_cast<int>(portId_) << std::endl
+       << "\tMode: " << static_cast<int>(mode_) << std::endl
+       << "\tInfo Type: " << EnumName(infoType_);
+}
+
+void PortModeInfoRequestMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    buf.push_back(portId_);
+    buf.push_back(mode_);
+    buf.push_back(Utils::enum_value(infoType_));
+}
+
 PortInfoMessage::PortInfoMessage()
 {
     type_ = Type::PortInfo;
+}
+
+uint8_t PortInfoMessage::GetModeCount() const
+{
+    return totalModeCount_;
 }
 
 bool PortInfoMessage::parseBody(size_t& itr)
@@ -407,9 +451,85 @@ void PortInfoMessage::toString(std::stringstream& ss) const
     }
 }
 
+PortModeInfoMessage::PortModeInfoMessage()
+{
+    type_ = Type::PortModeInfo;
+}
+
+bool PortModeInfoMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    portIds_.push_back(portId_);
+    mode_ = buffer_[itr++];
+    infoType_ = Utils::to_enum<PortModeInfoRequestMessage::InfoType>(buffer_[itr++]);
+    switch (infoType_) {
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Name:
+            std::copy_n(&buffer_[itr], size_ - itr, name_.data());
+            itr = size_;
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Raw:
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Pct:
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Si:
+            min_ = *(float*)(&buffer_[itr]);
+            itr += 4;
+            max_ = *(float*)(&buffer_[itr]);
+            itr += 4;
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Symbol:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Mapping:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::MotorBias:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Capability:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::ValueFormat:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Unknown:
+            break;
+        default:
+            break;
+    }
+    return true;
+}
+
+void PortModeInfoMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId_) << std::endl
+       << "\tMode: " << static_cast<int>(mode_) << std::endl
+       << "\tInfo Type: " << EnumName(infoType_);
+    switch (infoType_) {
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Name:
+            ss << std::endl << "\tName: " << name_.data();
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Raw:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Pct:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Si:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Symbol:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Mapping:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::MotorBias:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::Capability:
+            break;
+        case Ancorage::BLE::PortModeInfoRequestMessage::InfoType::ValueFormat:
+            break;
+    }
+}
+
 PortValueSingleMessage::PortValueSingleMessage()
 {
     type_ = Type::PortValueSingle;
+}
+
+uint32_t PortValueSingleMessage::GetValue() const
+{
+    return value_;
 }
 
 bool PortValueSingleMessage::parseBody(size_t& itr)
@@ -419,7 +539,7 @@ bool PortValueSingleMessage::parseBody(size_t& itr)
     if (size_ == 5) {
         value_ = buffer_[itr++];
     } else if (size_ == 6) {
-        value_ = Get16(buffer_, itr);
+        value_ = static_cast<int16_t>(Get16(buffer_, itr));
     } else if (size_ == 8) {
         value_ = Get32(buffer_, itr);
     } else {
@@ -432,7 +552,7 @@ void PortValueSingleMessage::toString(std::stringstream& ss) const
 {
     ss << std::endl
        << "\tPort ID: " << static_cast<int>(portId_) << std::endl
-       << "\tValue: " << value_;
+       << "\tValue: " << static_cast<int>(value_);
 }
 
 PortOutputCommandMessage::PortOutputCommandMessage()

@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <sstream>
+#include <array>
 
 namespace Ancorage::BLE
 {
@@ -142,6 +143,7 @@ public:
         Unknown = 0xff
     };
     HubAttachedIOMessage();
+    Event GetEvent() const;
 
 private:
     bool parseBody(size_t& itr) override;
@@ -156,10 +158,12 @@ private:
     uint8_t portB_ = UINT8_MAX;
 };
 
-class PortInputFormatSetupSingle : public Message
+class PortInputFormatSetupSingleMessage : public Message
 {
+    friend class MessageFactory;
+
 public:
-    PortInputFormatSetupSingle();
+    PortInputFormatSetupSingleMessage();
 
 private:
     bool parseBody(size_t& itr) override;
@@ -195,10 +199,41 @@ private:
     InfoType infoType_ = InfoType::Unknown;
 };
 
+class PortModeInfoRequestMessage : public Message
+{
+    friend class MessageFactory;
+
+public:
+    enum class InfoType : uint8_t {
+        Name = 0x00,
+        Raw = 0x01,
+        Pct = 0x02,
+        Si = 0x03,
+        Symbol = 0x04,
+        Mapping = 0x05,
+        MotorBias = 0x07,
+        Capability = 0x08,
+        ValueFormat = 0x80,
+        Unknown = 0xff
+    };
+    PortModeInfoRequestMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    uint8_t mode_ = UINT8_MAX;
+    InfoType infoType_ = InfoType::Unknown;
+};
+
 class PortInfoMessage : public Message
 {
 public:
     PortInfoMessage();
+
+    uint8_t GetModeCount() const;
 
 private:
     bool parseBody(size_t& itr) override;
@@ -207,16 +242,39 @@ private:
     uint8_t portId_ = UINT8_MAX;
     PortInfoRequestMessage::InfoType infoType_ = PortInfoRequestMessage::InfoType::Unknown;
     uint8_t capabilities_ = UINT8_MAX;
-    uint8_t totalModeCount_ = UINT8_MAX;
+    uint8_t totalModeCount_ = 0;
     uint16_t inputModes_ = UINT16_MAX;
     uint16_t outputModes_ = UINT16_MAX;
     uint8_t modeCombinations_ = UINT8_MAX;
+};
+
+class PortModeInfoMessage : public Message
+{
+public:
+    PortModeInfoMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    uint8_t mode_ = UINT8_MAX;
+    PortModeInfoRequestMessage::InfoType infoType_ = PortModeInfoRequestMessage::InfoType::Unknown;
+    std::array<uint8_t, 12> name_ = {0};
+    float min_ = 0;
+    float max_ = 0;
+    std::array<uint8_t, 6> symbol_ = {0};
+    uint16_t mapping_ = UINT16_MAX;
+    uint8_t motorBias_ = UINT8_MAX;
+    std::array<uint8_t, 7> capability_ = {0};
+    std::array<uint8_t, 5> value_ = {0};
 };
 
 class PortValueSingleMessage : public Message
 {
 public:
     PortValueSingleMessage();
+    uint32_t GetValue() const;
 
 private:
     bool parseBody(size_t& itr) override;

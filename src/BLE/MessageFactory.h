@@ -14,6 +14,12 @@ public:
     static std::shared_ptr<Message> CreatePortInfoRequestMessage(
         uint8_t portId, PortInfoRequestMessage::InfoType type);
 
+    static std::shared_ptr<Message> CreatePortModeInfoRequestMessage(
+        uint8_t portId, uint8_t mode, PortModeInfoRequestMessage::InfoType type);
+
+    static std::shared_ptr<Message> CreatePortInputFormatSetupSingleMessage(
+        uint8_t portId, uint8_t mode, uint32_t deltaInterval, bool notify);
+
     static std::shared_ptr<Message> CreateStartSpeedPortOutputCommandMessage(
         uint8_t portId, int8_t speed, int8_t maxPower, int8_t useProfile);
 
