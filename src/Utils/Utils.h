@@ -73,6 +73,7 @@ public:
     explicit Semaphore(int count = 0);
     void notify();
     void wait();
+    bool wait_for();
 
 private:
     std::mutex mtx_;

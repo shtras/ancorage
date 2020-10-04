@@ -51,6 +51,9 @@ bool Hub::Connect()
         return false;
     }
     ble_->Run();
+    for (auto& port : ports_) {
+        port.second->OnConnect();
+    }
     return true;
 }
 

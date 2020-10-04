@@ -196,14 +196,8 @@ void Port::OnMessage(const std::unique_ptr<BLE::Message>& m)
 {
     spdlog::debug("Received message on port {}: {}", id_, m->ToString());
     switch (m->GetType()) {
-        case BLE::Message::Type::HubAttachedIO:
-            if ((static_cast<BLE::HubAttachedIOMessage*>(m.get()))->GetEvent() ==
-                BLE::HubAttachedIOMessage::Event::AttachedIO) {
-                onConnect();
-            }
-            break;
         case BLE::Message::Type::PortInfo:
-            numModes_ = (static_cast<BLE::PortInfoMessage*>(m.get()))->GetModeCount();
+            numModes_ = (dynamic_cast<BLE::PortInfoMessage*>(m.get()))->GetModeCount();
             initSem_.notify();
             break;
         case BLE::Message::Type::PortModeInfo:
@@ -212,24 +206,26 @@ void Port::OnMessage(const std::unique_ptr<BLE::Message>& m)
         case BLE::Message::Type::PortValueSingle:
             if (!initialized_) {
                 position_ = static_cast<int>(
-                    static_cast<BLE::PortValueSingleMessage*>(m.get())->GetValue());
+                    dynamic_cast<BLE::PortValueSingleMessage*>(m.get())->GetValue());
                 initSem_.notify();
             }
             break;
     }
 }
 
-void Port::onConnect()
+void Port::OnConnect()
 {
     connectT_ = std::thread(&Port::connectProc, this);
 }
 
 void Port::connectProc()
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     ble_->SendBTMessage(BLE::MessageFactory::CreatePortInfoRequestMessage(
         id_, BLE::PortInfoRequestMessage::InfoType::ModeInfo));
-    initSem_.wait();
+    if (!initSem_.wait_for()) {
+        spdlog::error("Port initialization failed");
+        return;
+    }
     for (decltype(numModes_) i = 0; i < numModes_; ++i) {
         ble_->SendBTMessage(BLE::MessageFactory::CreatePortModeInfoRequestMessage(
             id_, i, BLE::PortModeInfoRequestMessage::InfoType::Raw));

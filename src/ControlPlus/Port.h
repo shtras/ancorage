@@ -24,6 +24,7 @@ public:
     void ButtonDown(uint8_t b);
     void ButtonUp(uint8_t b);
     void OnMessage(const std::unique_ptr<BLE::Message>& m);
+    void OnConnect();
 
 private:
     struct Action
@@ -35,7 +36,6 @@ private:
         Type type = Type::Unknown;
     };
 
-    void onConnect();
     void executeAction(const Action& a, bool start);
     void connectProc();
 

@@ -91,4 +91,15 @@ void Semaphore::wait()
     --count_;
 }
 
+bool Semaphore::wait_for()
+{
+    std::unique_lock<std::mutex> lock(mtx_);
+    auto res = cv_.wait_for(lock, std::chrono::milliseconds(1000), [this]() { return count_ > 0; });
+    if (!res) {
+        return false;
+    }
+    --count_;
+    return true;
+}
+
 } // namespace Ancorage::Utils
