@@ -139,7 +139,9 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
                 case PortOutputCommandMessage::SubCommand::GotoAbsolutePosition2:
                 case PortOutputCommandMessage::SubCommand::PresetEncoder:
                 case PortOutputCommandMessage::SubCommand::WriteDirect:
+                    break;
                 case PortOutputCommandMessage::SubCommand::WriteDirectModeData:
+                    res = std::make_unique<WriteDirectModeDataPortOutputCommandMessage>();
                     break;
             }
         } break;
@@ -614,6 +616,32 @@ void StartSpeedPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) con
     buf.push_back(speed_);
     buf.push_back(maxPower_);
     buf.push_back(useProfile_);
+}
+
+WriteDirectModeDataPortOutputCommandMessage::WriteDirectModeDataPortOutputCommandMessage()
+{
+    subCommand_ = SubCommand::WriteDirectModeData;
+}
+
+void WriteDirectModeDataPortOutputCommandMessage::toString(std::stringstream& ss) const
+{
+    PortOutputCommandMessage::toString(ss);
+    ss << std::endl << "\tMode: " << static_cast<int>(mode_);
+}
+
+bool WriteDirectModeDataPortOutputCommandMessage::parseSubCommand(size_t& itr)
+{
+    mode_ = buffer_[itr++];
+    payload_.insert(payload_.end(), buffer_.begin() + itr, buffer_.end());
+    itr = size_;
+    return true;
+}
+
+void WriteDirectModeDataPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
+{
+    PortOutputCommandMessage::toBuffer(buf);
+    buf.push_back(mode_);
+    buf.insert(buf.end(), payload_.begin(), payload_.end());
 }
 
 GotoAbsolutePositionPortOutputCommandMessage::GotoAbsolutePositionPortOutputCommandMessage()

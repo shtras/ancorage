@@ -61,4 +61,14 @@ std::shared_ptr<Message> MessageFactory::CreateGotoAbsolutePositionPortOutputCom
     m->endState_ = endState;
     return m;
 }
+
+std::shared_ptr<Message> MessageFactory::CreateDirectModeStartPowerMessage(
+    uint8_t portId, uint8_t power)
+{
+    auto m = std::make_shared<WriteDirectModeDataPortOutputCommandMessage>();
+    m->portId_ = portId;
+    m->mode_ = 0;
+    m->payload_.push_back(power);
+    return m;
+}
 } // namespace Ancorage::BLE

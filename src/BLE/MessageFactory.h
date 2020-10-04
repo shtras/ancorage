@@ -25,5 +25,8 @@ public:
 
     static std::shared_ptr<Message> CreateGotoAbsolutePositionPortOutputCommandMessage(
         uint8_t portId, int position, int8_t speed, int8_t power, int8_t endState);
+
+    static std::shared_ptr<Message> CreateDirectModeStartPowerMessage(
+        uint8_t portId, uint8_t power);
 };
 } // namespace Ancorage::BLE

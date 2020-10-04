@@ -336,6 +336,22 @@ private:
     int8_t useProfile_ = 0;
 };
 
+class WriteDirectModeDataPortOutputCommandMessage : public PortOutputCommandMessage
+{
+    friend class MessageFactory;
+
+public:
+    WriteDirectModeDataPortOutputCommandMessage();
+
+    void toString(std::stringstream& ss) const override;
+    bool parseSubCommand(size_t& itr) override;
+    void toBuffer(std::vector<uint8_t>& buf) const override;
+
+private:
+    uint8_t mode_ = UINT8_MAX;
+    std::vector<uint8_t> payload_;
+};
+
 class GotoAbsolutePositionPortOutputCommandMessage : public PortOutputCommandMessage
 {
     friend class MessageFactory;

@@ -173,9 +173,12 @@ void Port::ButtonUp(uint8_t b)
 void Port::executeAction(const Action& a, bool start)
 {
     if (a.type == Action::Type::Value) {
-        auto m = BLE::MessageFactory::CreateStartSpeedPortOutputCommandMessage(
-            id_, static_cast<int8_t>(start ? a.value : a.zeroValue), 100, start ? 1 : 2);
-        ble_->SendBTMessage(m);
+        if (start) {
+            ble_->SendBTMessage(BLE::MessageFactory::CreateStartSpeedPortOutputCommandMessage(
+                id_, static_cast<int8_t>(a.value), 100, 1));
+        } else {
+            ble_->SendBTMessage(BLE::MessageFactory::CreateDirectModeStartPowerMessage(id_, 0));
+        }
     } else if (a.type == Action::Type::Absolute) {
         auto m = BLE::MessageFactory::CreateGotoAbsolutePositionPortOutputCommandMessage(
             id_, start ? a.value - position_ : a.zeroValue - position_, 60, 60, 126);
