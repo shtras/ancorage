@@ -252,6 +252,8 @@ class PortModeInfoMessage : public Message
 {
 public:
     PortModeInfoMessage();
+    std::string GetName() const;
+    uint8_t GetMode() const;
 
 private:
     bool parseBody(size_t& itr) override;
@@ -282,6 +284,21 @@ private:
 
     uint8_t portId_ = UINT8_MAX;
     uint32_t value_ = 0;
+};
+
+class PortInputFormatSingleMessage : public Message
+{
+public:
+    PortInputFormatSingleMessage();
+
+private:
+    bool parseBody(size_t& itr) override;
+    void toString(std::stringstream& ss) const override;
+
+    uint8_t portId_ = UINT8_MAX;
+    uint8_t mode_ = UINT8_MAX;
+    uint32_t deltaInterval_ = UINT32_MAX;
+    bool notificationEnabled_ = false;
 };
 
 class PortOutputCommandMessage : public Message
@@ -383,6 +400,8 @@ public:
         Unknown = 0xff
     };
     PortOutputCommandFeedbackMessage();
+    FeedbackMessage GetFeedbackMessage(uint8_t portId) const;
+    static bool IsIdle(FeedbackMessage m);
 
 private:
     bool parseBody(size_t& itr) override;

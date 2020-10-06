@@ -1,4 +1,7 @@
 #include "MessageFactory.h"
+
+#include "Utils/Utils.h"
+
 namespace Ancorage::BLE
 {
 std::shared_ptr<Message> MessageFactory::CreateHubActionsMessage(HubActionsMessage::ActionType t)
@@ -69,6 +72,16 @@ std::shared_ptr<Message> MessageFactory::CreateDirectModeStartPowerMessage(
     m->portId_ = portId;
     m->mode_ = 0;
     m->payload_.push_back(power);
+    return m;
+}
+
+std::shared_ptr<Message> MessageFactory::CreateDirectModePresetEncoderMessage(
+    uint8_t portId, int32_t val)
+{
+    auto m = std::make_shared<WriteDirectModeDataPortOutputCommandMessage>();
+    m->portId_ = portId;
+    m->mode_ = 2;
+    Utils::Set32(m->payload_, val);
     return m;
 }
 } // namespace Ancorage::BLE

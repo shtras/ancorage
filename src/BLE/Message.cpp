@@ -4,31 +4,10 @@
 
 #include "spdlog_wrap.h"
 
+#include <string>
+
 namespace Ancorage::BLE
 {
-uint16_t Get16(const std::vector<uint8_t>& b, size_t& itr)
-{
-    uint16_t res = (b[itr + 1] << 8) | b[itr];
-    itr += 2;
-    return res;
-}
-
-uint32_t Get32(const std::vector<uint8_t>& b, size_t& itr)
-{
-    auto low = Get16(b, itr);
-    auto high = Get16(b, itr);
-
-    return (low << 16) | high;
-}
-
-void Set32(std::vector<uint8_t>& b, uint32_t v)
-{
-    b.push_back(v & 0xff);
-    b.push_back(static_cast<uint8_t>((v & 0xff00) >> 8));
-    b.push_back(static_cast<uint8_t>((v & 0xff0000) >> 16));
-    b.push_back(static_cast<uint8_t>((v & 0xff000000) >> 24));
-}
-
 bool Message::IsType(uint8_t b)
 {
     switch (Utils::to_enum<Message::Type>(b)) {
@@ -113,7 +92,10 @@ std::unique_ptr<Message> Message::Parse(uint8_t* buffer, size_t size)
             res = std::make_unique<PortValueSingleMessage>();
             break;
         case Type::PortValueCombined:
+            break;
         case Type::PortInputFormatSingle:
+            res = std::make_unique<PortInputFormatSingleMessage>();
+            break;
         case Type::PortInputFormatCombined:
         case Type::VirtualPortSetup:
             break;
@@ -287,12 +269,12 @@ bool HubAttachedIOMessage::parseBody(size_t& itr)
     portIds_.push_back(portId_);
     event_ = Utils::to_enum<Event>(buffer_[itr++]);
     if (event_ == Event::AttachedIO || event_ == Event::AttachedVirtualIO) {
-        uint16_t typeId = Get16(buffer_, itr);
+        uint16_t typeId = Utils::Get16(buffer_, itr);
         ioTypeId_ = Utils::to_enum<IOTypeID>(typeId);
     }
     if (event_ == Event::AttachedIO) {
-        hardwareRev_ = Get32(buffer_, itr);
-        softwareRev_ = Get32(buffer_, itr);
+        hardwareRev_ = Utils::Get32(buffer_, itr);
+        softwareRev_ = Utils::Get32(buffer_, itr);
     }
     if (event_ == Event::AttachedVirtualIO) {
         portA_ = buffer_[itr++];
@@ -331,7 +313,7 @@ bool PortInputFormatSetupSingleMessage::parseBody(size_t& itr)
     portId_ = buffer_[itr++];
     portIds_.push_back(portId_);
     mode_ = buffer_[itr++];
-    deltaInterval_ = Get32(buffer_, itr);
+    deltaInterval_ = Utils::Get32(buffer_, itr);
     notificationEnabled_ = buffer_[itr++];
     return true;
 }
@@ -349,7 +331,7 @@ void PortInputFormatSetupSingleMessage::toBuffer(std::vector<uint8_t>& buf) cons
 {
     buf.push_back(portId_);
     buf.push_back(mode_);
-    Set32(buf, deltaInterval_);
+    Utils::Set32(buf, deltaInterval_);
     buf.push_back(notificationEnabled_);
 }
 
@@ -426,8 +408,8 @@ bool PortInfoMessage::parseBody(size_t& itr)
     if (infoType_ == PortInfoRequestMessage::InfoType::ModeInfo) {
         capabilities_ = buffer_[itr++];
         totalModeCount_ = buffer_[itr++];
-        inputModes_ = Get16(buffer_, itr);
-        outputModes_ = Get16(buffer_, itr);
+        inputModes_ = Utils::Get16(buffer_, itr);
+        outputModes_ = Utils::Get16(buffer_, itr);
     } else if (infoType_ == PortInfoRequestMessage::InfoType::PossibleCombinations) {
         modeCombinations_ = buffer_[itr++];
     } else {
@@ -456,6 +438,16 @@ void PortInfoMessage::toString(std::stringstream& ss) const
 PortModeInfoMessage::PortModeInfoMessage()
 {
     type_ = Type::PortModeInfo;
+}
+
+std::string PortModeInfoMessage::GetName() const
+{
+    return std::string{reinterpret_cast<const char*>(name_.data())};
+}
+
+uint8_t PortModeInfoMessage::GetMode() const
+{
+    return mode_;
 }
 
 bool PortModeInfoMessage::parseBody(size_t& itr)
@@ -541,9 +533,9 @@ bool PortValueSingleMessage::parseBody(size_t& itr)
     if (size_ == 5) {
         value_ = buffer_[itr++];
     } else if (size_ == 6) {
-        value_ = static_cast<int16_t>(Get16(buffer_, itr));
+        value_ = static_cast<int16_t>(Utils::Get16(buffer_, itr));
     } else if (size_ == 8) {
-        value_ = Get32(buffer_, itr);
+        value_ = Utils::Get32(buffer_, itr);
     } else {
         return false;
     }
@@ -555,6 +547,29 @@ void PortValueSingleMessage::toString(std::stringstream& ss) const
     ss << std::endl
        << "\tPort ID: " << static_cast<int>(portId_) << std::endl
        << "\tValue: " << static_cast<int>(value_);
+}
+
+PortInputFormatSingleMessage::PortInputFormatSingleMessage()
+{
+    type_ = Type::PortInputFormatSingle;
+}
+
+bool PortInputFormatSingleMessage::parseBody(size_t& itr)
+{
+    portId_ = buffer_[itr++];
+    mode_ = buffer_[itr++];
+    deltaInterval_ = Utils::Get32(buffer_, itr);
+    notificationEnabled_ = buffer_[itr++];
+    return true;
+}
+
+void PortInputFormatSingleMessage::toString(std::stringstream& ss) const
+{
+    ss << std::endl
+       << "\tPort ID: " << static_cast<int>(portId_) << std::endl
+       << "\tMode" << static_cast<int>(mode_) << std::endl
+       << "\tDelta Interval: " << deltaInterval_ << std::endl
+       << "\tNotification Enabled: " << notificationEnabled_;
 }
 
 PortOutputCommandMessage::PortOutputCommandMessage()
@@ -661,7 +676,7 @@ void GotoAbsolutePositionPortOutputCommandMessage::toString(std::stringstream& s
 
 bool GotoAbsolutePositionPortOutputCommandMessage::parseSubCommand(size_t& itr)
 {
-    pos_ = Get32(buffer_, itr);
+    pos_ = Utils::Get32(buffer_, itr);
     speed_ = buffer_[itr++];
     power_ = buffer_[itr++];
     endState_ = buffer_[itr++];
@@ -671,7 +686,7 @@ bool GotoAbsolutePositionPortOutputCommandMessage::parseSubCommand(size_t& itr)
 void GotoAbsolutePositionPortOutputCommandMessage::toBuffer(std::vector<uint8_t>& buf) const
 {
     PortOutputCommandMessage::toBuffer(buf);
-    Set32(buf, pos_);
+    Utils::Set32(buf, pos_);
     buf.push_back(speed_);
     buf.push_back(power_);
     buf.push_back(endState_);
@@ -681,6 +696,25 @@ void GotoAbsolutePositionPortOutputCommandMessage::toBuffer(std::vector<uint8_t>
 PortOutputCommandFeedbackMessage::PortOutputCommandFeedbackMessage()
 {
     type_ = Type::PortOutputCommandFeedback;
+}
+
+PortOutputCommandFeedbackMessage::FeedbackMessage
+PortOutputCommandFeedbackMessage::GetFeedbackMessage(uint8_t portId) const
+{
+    if (portId == portId1_) {
+        return message1_;
+    } else if (portId == portId2_) {
+        return message2_;
+    } else if (portId == portId3_) {
+        return message3_;
+    } else {
+        return FeedbackMessage::Unknown;
+    }
+}
+
+bool PortOutputCommandFeedbackMessage::IsIdle(PortOutputCommandFeedbackMessage::FeedbackMessage m)
+{
+    return (Utils::enum_value(m) & Utils::enum_value(FeedbackMessage::Idle)) != 0;
 }
 
 bool PortOutputCommandFeedbackMessage::parseBody(size_t& itr)

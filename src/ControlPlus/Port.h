@@ -38,9 +38,11 @@ private:
 
     void executeAction(const Action& a, bool start);
     void connectProc();
+    void onInitializingMessage(const std::unique_ptr<BLE::Message>& m);
 
     uint8_t id_ = UINT8_MAX;
     Type type_ = Type::Unknown;
+    int initialPos_ = 0;
     int position_ = 0;
     BLE::BLEManager* ble_ = nullptr;
     std::map<uint8_t, Action> continuousActions_;
@@ -48,6 +50,8 @@ private:
     Utils::Semaphore initSem_;
     std::thread connectT_;
     uint8_t numModes_ = 0;
+    uint8_t absPosMode_ = UINT8_MAX;
+    BLE::Message::Type nextInitMessage_ = BLE::Message::Type::Unknown;
     std::atomic<bool> initialized_{false};
 };
 } // namespace Ancorage::ControlPlus

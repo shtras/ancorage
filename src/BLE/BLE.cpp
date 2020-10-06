@@ -347,7 +347,7 @@ bool BLEManager::Impl::init()
                 hr = BluetoothGATTSetDescriptorValue(
                     handle_, currGattDescriptor, &newValue, BLUETOOTH_GATT_FLAG_NONE);
                 if (FAILED(hr)) {
-                    spdlog::error("SetDescriptorValue failed: {0:x}", -hr);
+                    spdlog::error("SetDescriptorValue failed: {0:x}", (uint32_t)hr);
                     //return false;
                 } else {
                     spdlog::info("Setting notification for serivice handle {}",

@@ -72,6 +72,29 @@ uint64_t FromFloat(float f)
     return static_cast<uint64_t>((f + 1.0F) * 1000.0F);
 }
 
+uint16_t Get16(const std::vector<uint8_t>& b, size_t& itr)
+{
+    uint16_t res = (b[itr + 1] << 8) | b[itr];
+    itr += 2;
+    return res;
+}
+
+uint32_t Get32(const std::vector<uint8_t>& b, size_t& itr)
+{
+    auto low = Get16(b, itr);
+    auto high = Get16(b, itr);
+
+    return (low << 16) | high;
+}
+
+void Set32(std::vector<uint8_t>& b, uint32_t v)
+{
+    b.push_back(v & 0xff);
+    b.push_back(static_cast<uint8_t>((v & 0xff00) >> 8));
+    b.push_back(static_cast<uint8_t>((v & 0xff0000) >> 16));
+    b.push_back(static_cast<uint8_t>((v & 0xff000000) >> 24));
+}
+
 Semaphore::Semaphore(int count /* = 0*/)
     : count_(count)
 {

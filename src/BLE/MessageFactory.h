@@ -28,5 +28,8 @@ public:
 
     static std::shared_ptr<Message> CreateDirectModeStartPowerMessage(
         uint8_t portId, uint8_t power);
+
+    static std::shared_ptr<Message> CreateDirectModePresetEncoderMessage(
+        uint8_t portId, int32_t val);
 };
 } // namespace Ancorage::BLE

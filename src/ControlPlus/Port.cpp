@@ -181,7 +181,7 @@ void Port::executeAction(const Action& a, bool start)
         }
     } else if (a.type == Action::Type::Absolute) {
         auto m = BLE::MessageFactory::CreateGotoAbsolutePositionPortOutputCommandMessage(
-            id_, start ? a.value - position_ : a.zeroValue - position_, 60, 60, 126);
+            id_, start ? a.value - initialPos_ : a.zeroValue - initialPos_, 40, 80, 126);
         ble_->SendBTMessage(m);
     } else if (a.type == Action::Type::Forward || a.type == Action::Type::Backward) {
         if (a.type == Action::Type::Forward) {
@@ -198,52 +198,87 @@ void Port::executeAction(const Action& a, bool start)
 void Port::OnMessage(const std::unique_ptr<BLE::Message>& m)
 {
     spdlog::debug("Received message on port {}: {}", id_, m->ToString());
-    switch (m->GetType()) {
-        case BLE::Message::Type::PortInfo:
-            numModes_ = (dynamic_cast<BLE::PortInfoMessage*>(m.get()))->GetModeCount();
-            initSem_.notify();
-            break;
-        case BLE::Message::Type::PortModeInfo:
-            initSem_.notify();
-            break;
-        case BLE::Message::Type::PortValueSingle:
-            if (!initialized_) {
-                position_ = static_cast<int>(
-                    dynamic_cast<BLE::PortValueSingleMessage*>(m.get())->GetValue());
-                initSem_.notify();
-            }
-            break;
+    if (!initialized_) {
+        onInitializingMessage(m);
+        return;
     }
 }
 
 void Port::OnConnect()
 {
+    if (connectT_.joinable()) {
+        connectT_.join();
+    }
     connectT_ = std::thread(&Port::connectProc, this);
+}
+
+void Port::onInitializingMessage(const std::unique_ptr<BLE::Message>& m)
+{
+    switch (m->GetType()) {
+        case BLE::Message::Type::PortInfo:
+            numModes_ = (dynamic_cast<BLE::PortInfoMessage*>(m.get()))->GetModeCount();
+            break;
+        case BLE::Message::Type::PortModeInfo: {
+            auto portModeM = dynamic_cast<BLE::PortModeInfoMessage*>(m.get());
+            auto n = portModeM->GetName();
+            if (n == "APOS") {
+                absPosMode_ = portModeM->GetMode();
+            }
+        } break;
+        case BLE::Message::Type::PortValueSingle:
+            initialPos_ =
+                static_cast<int>(dynamic_cast<BLE::PortValueSingleMessage*>(m.get())->GetValue());
+            position_ = initialPos_;
+            break;
+    }
+    if (m->GetType() == nextInitMessage_) {
+        if (m->GetType() == BLE::Message::Type::PortOutputCommandFeedback) {
+            auto feedbackM = dynamic_cast<BLE::PortOutputCommandFeedbackMessage*>(m.get());
+            if (!BLE::PortOutputCommandFeedbackMessage::IsIdle(
+                    feedbackM->GetFeedbackMessage(id_))) {
+                return;
+            }
+        }
+        initSem_.notify();
+    }
 }
 
 void Port::connectProc()
 {
     ble_->SendBTMessage(BLE::MessageFactory::CreatePortInfoRequestMessage(
         id_, BLE::PortInfoRequestMessage::InfoType::ModeInfo));
+    nextInitMessage_ = BLE::Message::Type::PortInfo;
     if (!initSem_.wait_for()) {
         spdlog::error("Port initialization failed");
         return;
     }
     for (decltype(numModes_) i = 0; i < numModes_; ++i) {
         ble_->SendBTMessage(BLE::MessageFactory::CreatePortModeInfoRequestMessage(
-            id_, i, BLE::PortModeInfoRequestMessage::InfoType::Raw));
+            id_, i, BLE::PortModeInfoRequestMessage::InfoType::Name));
+        nextInitMessage_ = BLE::Message::Type::PortModeInfo;
         initSem_.wait();
     }
     if (type_ == Type::Servo || type_ == Type::Stepper) {
-        ble_->SendBTMessage(
-            BLE::MessageFactory::CreatePortInputFormatSetupSingleMessage(id_, 3, 5, true));
-        spdlog::info("Connection sequence completed");
+        if (absPosMode_ == UINT8_MAX) {
+            spdlog::error("Motor doesn't support absolute position mode");
+            return;
+        }
+        ble_->SendBTMessage(BLE::MessageFactory::CreatePortInputFormatSetupSingleMessage(
+            id_, absPosMode_, 5, true));
+        nextInitMessage_ = BLE::Message::Type::PortValueSingle;
         initSem_.wait();
 
         ble_->SendBTMessage(BLE::MessageFactory::CreateGotoAbsolutePositionPortOutputCommandMessage(
-            id_, -position_, 10, 60, 127));
+            id_, -initialPos_, 10, 60, 127));
+        nextInitMessage_ = BLE::Message::Type::PortOutputCommandFeedback;
+        initSem_.wait();
+
+        ble_->SendBTMessage(BLE::MessageFactory::CreateDirectModePresetEncoderMessage(id_, 0));
+        initialPos_ = 0;
+        position_ = 0;
     }
 
+    spdlog::info("Connection sequence completed");
     initialized_ = true;
 }
 

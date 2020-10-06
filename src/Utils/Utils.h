@@ -67,6 +67,12 @@ float FromWparam(uint64_t p);
 
 uint64_t FromFloat(float f);
 
+uint16_t Get16(const std::vector<uint8_t>& b, size_t& itr);
+
+uint32_t Get32(const std::vector<uint8_t>& b, size_t& itr);
+
+void Set32(std::vector<uint8_t>& b, uint32_t v);
+
 class Semaphore
 {
 public:
